@@ -1,25 +1,20 @@
 package graph
 
 import (
+	"slices"
+
 	"github.com/eurico-martins/lazytree/internal/model"
 )
 
 // Layout computes lane assignments for all commits.
-// Commits must be in reverse-chronological order (as git log emits them).
+// Commits must be in reverse-chronological order (as git log emits them), with
+// each commit appearing before its parents — lane freeing relies on this to
+// know when a lane's owning branch has been fully consumed.
 // The result is a GraphLayout where each node knows its lane and the lanes
 // of its parents, enabling the renderer to draw edges between rows.
 func Layout(commits []model.Commit) model.GraphLayout {
 	if len(commits) == 0 {
 		return model.GraphLayout{}
-	}
-
-	// Pre-pass: count how many of the commits we process will reference each hash as a parent.
-	// This tells us when we can safely free a lane.
-	childCount := make(map[string]int, len(commits))
-	for _, c := range commits {
-		for _, p := range c.Parents {
-			childCount[p]++
-		}
 	}
 
 	laneOf := make(map[string]int, len(commits))
@@ -66,19 +61,11 @@ func Layout(commits []model.Commit) model.GraphLayout {
 			activeLanes[parentLanes[j]] = p
 		}
 
-		// Step 3: Release our lane if we have no parents (root commit) or
-		// if the first parent already had a lane assigned (no one else owns it).
-		if len(c.Parents) == 0 {
+		// Step 3: Free our lane if no parent inherits it (root commit, or a
+		// branch tip whose first parent already belongs to another lane —
+		// i.e. this branch is rejoining/collapsing into an already-active lane).
+		if !slices.Contains(parentLanes, lane) {
 			freeLane(&freeLanes, lane)
-		}
-
-		// Step 4: Decrement child counts and release lanes whose last child
-		// was just processed.
-		for _, p := range c.Parents {
-			childCount[p]--
-			if childCount[p] == 0 {
-				delete(childCount, p)
-			}
 		}
 
 		// Track width.

@@ -100,9 +100,14 @@ func (p *diffPane) renderContent() string {
 	return sb.String()
 }
 
-func (p *diffPane) View() string {
+func (p *diffPane) View(focused bool) string {
+	pane := stylePane
+	if focused {
+		pane = stylePaneActive
+	}
+
 	if p.files == nil {
-		return stylePane.Width(p.width - 4).Height(p.height - 2).Render(
+		return pane.Width(p.width - 4).Height(p.height - 2).Render(
 			styleHelp.Render("Press d to load diff"),
 		)
 	}
@@ -111,7 +116,7 @@ func (p *diffPane) View() string {
 		styleHelp.Render("j/k scroll · n/p file · esc back")
 	content := title + "\n" + p.viewport.View()
 
-	return stylePane.
+	return pane.
 		Width(p.width - 4).
 		Height(p.height - 2).
 		Render(content)

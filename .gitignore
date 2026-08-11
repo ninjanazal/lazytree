@@ -28,5 +28,11 @@ go.work.sum
 .env
 
 # Editor/IDE
-# .idea/
-# .vscode/
+.vscode/
+
+
+# Agentic
+CLAUDE.md
+
+# Build
+lazytree

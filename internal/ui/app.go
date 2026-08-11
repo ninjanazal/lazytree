@@ -301,17 +301,17 @@ func (m AppModel) View() string {
 	status := m.statusBar()
 
 	if m.mode == modeSearch {
-		return m.log.View() + "\n" + m.search.View() + "\n" + status
+		return m.log.View(true) + "\n" + m.search.View() + "\n" + status
 	}
 
 	if m.narrow {
 		switch m.mode {
 		case modeInspect:
-			return m.inspect.View() + "\n" + status
+			return m.inspect.View(true) + "\n" + status
 		case modeDiff:
-			return m.diff.View() + "\n" + status
+			return m.diff.View(true) + "\n" + status
 		default:
-			return m.log.View() + "\n" + status
+			return m.log.View(true) + "\n" + status
 		}
 	}
 
@@ -319,14 +319,14 @@ func (m AppModel) View() string {
 	var right string
 	switch m.mode {
 	case modeInspect:
-		right = m.inspect.View()
+		right = m.inspect.View(true)
 	case modeDiff:
-		right = m.diff.View()
+		right = m.diff.View(true)
 	default:
-		right = m.inspect.View()
+		right = m.inspect.View(false)
 	}
 
-	main := lipgloss.JoinHorizontal(lipgloss.Top, m.log.View(), right)
+	main := lipgloss.JoinHorizontal(lipgloss.Top, m.log.View(m.mode == modeLog), right)
 	return main + "\n" + status
 }
 

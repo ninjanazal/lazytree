@@ -100,9 +100,14 @@ func (p *inspectPane) renderContent() string {
 	return sb.String()
 }
 
-func (p *inspectPane) View() string {
+func (p *inspectPane) View(focused bool) string {
+	pane := stylePane
+	if focused {
+		pane = stylePaneActive
+	}
+
 	if p.commit == nil {
-		return stylePane.Width(p.width - 4).Height(p.height - 2).Render(
+		return pane.Width(p.width - 4).Height(p.height - 2).Render(
 			styleHelp.Render("Select a commit and press enter"),
 		)
 	}
@@ -110,7 +115,7 @@ func (p *inspectPane) View() string {
 	title := styleTitle.Render("  COMMIT") + "  " + styleHelp.Render("esc back · d diff")
 	content := title + "\n" + p.viewport.View()
 
-	return stylePane.
+	return pane.
 		Width(p.width - 4).
 		Height(p.height - 2).
 		Render(content)

@@ -1,6 +1,7 @@
 package graph
 
 import (
+	"maps"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -8,64 +9,31 @@ import (
 )
 
 const (
-	glyphCommit    = "●"
-	glyphVert      = "│"
-	glyphDiagRight = "╲"
-	glyphDiagLeft  = "╱"
-	glyphSpace = " "
+	glyphCommit = "o"
+	glyphVert   = "│"
+	glyphHoriz  = "─"
+	glyphArcDR  = "╭" // connects down and right
+	glyphArcDL  = "╮" // connects down and left
+	glyphArcUR  = "╰" // connects up and right
+	glyphArcUL  = "╯" // connects up and left
+	glyphSpace  = " "
 )
 
-// RenderGraph returns two strings for a commit row:
-// - commitLine: the graph glyphs for the commit itself (●, │, etc.)
-// - connLine:   the connecting line between this row and the next
+// RenderCommitLine renders one full graph row for node: the commit dot and
+// vertical pass-throughs for lanes active above this row, plus (when the
+// topology changes) a second, diagonal connector line leading into next's
+// lane layout. activeLanes reflects lanes open above this row on entry and
+// is mutated in place to reflect lanes open below this row on return, ready
+// for the caller's next call.
 //
-// width is the total number of lanes to render.
-func RenderGraph(node, next *model.GraphNode, width int) (commitLine, connLine string) {
-	// Build commit line.
-	cols := make([]string, width)
-	for i := range cols {
-		cols[i] = glyphSpace
-	}
-
-	// Draw vertical pass-throughs for all lanes < node.Lane.
-	// (Lanes > node.Lane that are active would need context we don't have here;
-	// we rely on the caller to pass an accurate next node.)
-	cols[node.Lane] = colorize(glyphCommit, node.Color)
-
-	commitLine = strings.Join(cols, " ")
-
-	// Build connector line (between this row and next).
-	if next == nil {
-		connLine = ""
-		return
-	}
-
-	connCols := make([]string, width)
-	for i := range connCols {
-		connCols[i] = glyphSpace
-	}
-
-	// Vertical lines for parents that stay in the same lane.
-	for j, pl := range node.Parents {
-		if pl < width {
-			if pl == node.Parents[0] && j == 0 {
-				connCols[pl] = colorize(glyphVert, node.Color)
-			} else {
-				connCols[pl] = colorize(glyphVert, pl%len(LanePalette))
-			}
-		}
-	}
-
-	connLine = strings.Join(connCols, " ")
-	return
-}
-
-// RenderCommitLine renders a single commit row with full graph context.
-// activeLanes is the set of lane indices that are "open" (have commits below them).
-func RenderCommitLine(node model.GraphNode, activeLanes map[int]bool, width int) string {
+// The returned string contains a single line for a plain pass-through row,
+// or two lines joined by "\n" when a merge/branch-collapse diagonal must be
+// drawn between this row and the next.
+func RenderCommitLine(node model.GraphNode, next *model.GraphNode, activeLanes map[int]bool, width int) string {
 	if width < node.Lane+1 {
 		width = node.Lane + 1
 	}
+
 	cols := make([]string, width)
 	for i := range cols {
 		if activeLanes[i] {
@@ -75,40 +43,87 @@ func RenderCommitLine(node model.GraphNode, activeLanes map[int]bool, width int)
 		}
 	}
 	cols[node.Lane] = colorize(glyphCommit, node.Color)
-	return strings.Join(cols, " ")
+	commitLine := strings.Join(cols, " ")
+
+	// "old" activeLanes (above this row) vs "new" (below this row, owned by
+	// this node's parents) — the diagonal segment needs both simultaneously.
+	oldActive := activeLanes
+	delete(oldActive, node.Lane)
+
+	newActive := make(map[int]bool, len(oldActive)+len(node.Parents))
+	maps.Copy(newActive, oldActive)
+	for _, pl := range node.Parents {
+		newActive[pl] = true
+	}
+
+	needsDiagonal := false
+	for _, pl := range node.Parents {
+		if pl != node.Lane {
+			needsDiagonal = true
+			break
+		}
+	}
+
+	var connLine string
+	if next != nil && needsDiagonal {
+		connLine = renderConnector(node, newActive, width)
+	}
+
+	// Commit downstream state for the caller.
+	clear(activeLanes)
+	maps.Copy(activeLanes, newActive)
+
+	if connLine == "" {
+		return commitLine
+	}
+	return commitLine + "\n" + connLine
 }
 
-// RenderConnectorLine renders the inter-row connector between two consecutive nodes.
-func RenderConnectorLine(cur, next model.GraphNode, activeLanes map[int]bool, width int) string {
-	if width < 1 {
-		width = 1
-	}
+// renderConnector draws the diagonal transition between a commit row and the
+// next, showing lanes that open (merge parents) or collapse (branch tips
+// rejoining an already-active lane) at this row. newActive is the set of
+// lanes open below this row; verticals are drawn for all of them, then
+// overwritten with a diagonal glyph along the path of any parent lane that
+// differs from node.Lane.
+func renderConnector(node model.GraphNode, newActive map[int]bool, width int) string {
 	cols := make([]string, width)
 	for i := range cols {
 		cols[i] = glyphSpace
 	}
 
-	// Vertical continuations for all active lanes.
-	for i := range cols {
-		if activeLanes[i] {
-			cols[i] = colorize(glyphVert, i%len(LanePalette))
+	for lane := range newActive {
+		if lane < width {
+			cols[lane] = colorize(glyphVert, lane%len(LanePalette))
 		}
 	}
 
-	// Diagonal for merge parents that are opening new lanes.
-	for _, pl := range cur.Parents[1:] {
-		if pl >= width {
-			continue
+	drawDiagonal := func(from, to, color int) {
+		if to > from {
+			if from < width {
+				cols[from] = colorize(glyphArcUR, color)
+			}
+			for col := from + 1; col < to && col < width; col++ {
+				cols[col] = colorize(glyphHoriz, color)
+			}
+			if to < width {
+				cols[to] = colorize(glyphArcDL, color)
+			}
+		} else if to < from {
+			if from < width {
+				cols[from] = colorize(glyphArcUL, color)
+			}
+			for col := to + 1; col < from && col < width; col++ {
+				cols[col] = colorize(glyphHoriz, color)
+			}
+			if to < width {
+				cols[to] = colorize(glyphArcDR, color)
+			}
 		}
-		// Draw diagonal from cur.Lane to pl.
-		if pl > cur.Lane {
-			for col := cur.Lane + 1; col <= pl && col < width; col++ {
-				cols[col] = colorize(glyphDiagRight, cur.Color)
-			}
-		} else if pl < cur.Lane {
-			for col := pl; col < cur.Lane && col < width; col++ {
-				cols[col] = colorize(glyphDiagLeft, cur.Color)
-			}
+	}
+
+	for _, pl := range node.Parents {
+		if pl != node.Lane && pl < width {
+			drawDiagonal(node.Lane, pl, node.Color)
 		}
 	}
 

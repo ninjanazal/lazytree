@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/eurico-martins/lazytree/internal/graph"
 	"github.com/eurico-martins/lazytree/internal/model"
 )
@@ -129,13 +130,35 @@ func (p *logPane) visibleIndex(cursor int) int {
 	return cursor
 }
 
+// graphLines renders the full, unfiltered graph for every commit in order,
+// indexed by commit index. Filtering only hides which rows' text gets
+// displayed (see View); the graph itself is always walked in full so
+// activeLanes bookkeeping and diagonals stay correct regardless of filter.
+func (p *logPane) graphLines() []string {
+	lines := make([]string, len(p.layout.Nodes))
+	activeLanes := make(map[int]bool)
+	for i, node := range p.layout.Nodes {
+		var next *model.GraphNode
+		if i+1 < len(p.layout.Nodes) {
+			next = &p.layout.Nodes[i+1]
+		}
+		lines[i] = graph.RenderCommitLine(node, next, activeLanes, p.layout.Width)
+	}
+	return lines
+}
+
 func (p *logPane) nearBottom() bool {
 	return p.cursor >= p.visibleCount()-50
 }
 
-func (p *logPane) View() string {
+func (p *logPane) View(focused bool) string {
+	pane := stylePane
+	if focused {
+		pane = stylePaneActive
+	}
+
 	if len(p.commits) == 0 {
-		return stylePane.Width(p.width - 4).Render(
+		return pane.Width(p.width - 4).Render(
 			styleHelp.Render("Loading history…"),
 		)
 	}
@@ -147,14 +170,23 @@ func (p *logPane) View() string {
 		visible = 1
 	}
 
-	// Track active lanes for rendering continuations.
-	activeLanes := make(map[int]bool)
+	// Graph rendering always walks the full commit list in order (not just
+	// the visible window) so activeLanes bookkeeping and diagonals stay
+	// correct even when a filter hides some rows' text.
+	graphLines := p.graphLines()
 
-	for row := 0; row < visible; row++ {
-		idx := p.offset + row
-		if idx >= count {
-			break
-		}
+	// Fixed column widths (computed over all commits, not just the visible
+	// window) so hash/date/author don't reflow between scrolls and the graph
+	// column that follows them lands in the same x-offset on every row.
+	hashColW, dateColW, authorColW := 0, 0, 0
+	for _, c := range p.commits {
+		hashColW = max(hashColW, lipgloss.Width(c.ShortHash))
+		dateColW = max(dateColW, lipgloss.Width(relativeTime(c.Timestamp)))
+		authorColW = max(authorColW, lipgloss.Width(truncate(c.Author, 16)))
+	}
+
+	lineBudget := visible
+	for idx := p.offset; idx < count && lineBudget > 0; idx++ {
 		commitIdx := p.visibleIndex(idx)
 		if commitIdx < 0 || commitIdx >= len(p.commits) {
 			break
@@ -163,63 +195,69 @@ func (p *logPane) View() string {
 		c := p.commits[commitIdx]
 		selected := idx == p.cursor
 
-		// Graph segment.
-		var graphStr string
-		if p.filtered == nil && commitIdx < len(p.layout.Nodes) {
-			node := p.layout.Nodes[commitIdx]
-			graphStr = graph.RenderCommitLine(node, activeLanes, p.layout.Width)
-			// Update active lanes: remove this node's lane, add parent lanes.
-			delete(activeLanes, node.Lane)
-			for _, pl := range node.Parents {
-				activeLanes[pl] = true
-			}
-		} else {
-			graphStr = " "
+		graphStr := " "
+		if commitIdx < len(graphLines) {
+			graphStr = graphLines[commitIdx]
 		}
+		graphRow, graphConn, _ := strings.Cut(graphStr, "\n")
 
-		// Commit fields.
-		hash := styleHash.Render(c.ShortHash)
+		// Commit fields, padded to fixed column widths so the graph column
+		// that follows stays aligned across rows.
+		hash := styleHash.Width(hashColW).Render(c.ShortHash)
 		subject := c.Subject
-		author := styleAuthor.Render(truncate(c.Author, 16))
-		date := styleDate.Render(relativeTime(c.Timestamp))
+		author := styleAuthor.Width(authorColW).Render(truncate(c.Author, 16))
+		date := styleDate.Width(dateColW).Render(relativeTime(c.Timestamp))
 		refs := renderRefs(c.Refs)
 
-		graphW := lipgloss.Width(graphStr)
+		graphW := lipgloss.Width(graphRow)
 		hashW := lipgloss.Width(hash)
 		authorW := lipgloss.Width(author)
 		dateW := lipgloss.Width(date)
 		refsW := lipgloss.Width(refs)
 
 		// Available width for subject.
-		fixed := graphW + 1 + hashW + 1 + authorW + 1 + dateW + 1 + refsW + 2
+		fixed := hashW + 1 + dateW + 1 + authorW + 1 + graphW + 1 + refsW + 2
 		subjectW := p.width - 8 - fixed
 		if subjectW < 10 {
 			subjectW = 10
 		}
 		subject = truncate(subject, subjectW)
 
-		line := fmt.Sprintf("%s %s %s %s %s%s",
-			graphStr, hash, subject, author, date,
+		line := fmt.Sprintf("%s %s %s %s%s %s",
+			hash, date, author, graphRow,
 			func() string {
 				if refs != "" {
 					return " " + refs
 				}
 				return ""
 			}(),
+			subject,
 		)
 
 		if selected {
-			// Pad to full width for selection highlight.
-			lineW := lipgloss.Width(line)
+			// Strip the per-field ANSI styling first: each inner
+			// lipgloss.Render call emits its own reset, which would
+			// otherwise cut the selection background short after the
+			// first colored segment. Render the plain text through
+			// styleSelected instead so the background spans the full row.
+			plain := ansi.Strip(line)
+			lineW := lipgloss.Width(plain)
 			paneW := p.width - 8
 			if lineW < paneW {
-				line += strings.Repeat(" ", paneW-lineW)
+				plain += strings.Repeat(" ", paneW-lineW)
 			}
-			line = styleSelected.Render(line)
+			line = styleSelected.Render(plain)
 		}
 
 		sb.WriteString(line)
 		sb.WriteString("\n")
+		lineBudget--
+
+		if graphConn != "" && lineBudget > 0 {
+			sb.WriteString(graphConn)
+			sb.WriteString("\n")
+			lineBudget--
+		}
 	}
 
 	title := styleTitle.Render("  HISTORY")
@@ -234,7 +272,7 @@ func (p *logPane) View() string {
 
 	inner := content + "\n" + help
 
-	return stylePane.
+	return pane.
 		Width(p.width - 4).
 		Height(p.height - 2).
 		Render(inner)
@@ -265,9 +303,9 @@ func renderRefs(refs []model.Ref) string {
 		parts = append(parts, s)
 	}
 	inner := strings.Join(parts, ", ")
-	return lipgloss.NewStyle().Foreground(colorBorder).Render("[") +
+	return lipgloss.NewStyle().Foreground(colorBorder).Render("(") +
 		inner +
-		lipgloss.NewStyle().Foreground(colorBorder).Render("]")
+		lipgloss.NewStyle().Foreground(colorBorder).Render(")")
 }
 
 func relativeTime(t time.Time) string {
@@ -306,4 +344,3 @@ func truncate(s string, n int) string {
 	}
 	return string(runes[:n-1]) + "…"
 }
-

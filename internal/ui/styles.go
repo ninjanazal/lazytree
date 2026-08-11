@@ -3,20 +3,25 @@ package ui
 import "github.com/charmbracelet/lipgloss"
 
 var (
-	colorBase     = lipgloss.Color("240")
-	colorSelected = lipgloss.Color("69")
-	colorHash     = lipgloss.Color("214")
-	colorAuthor   = lipgloss.Color("35")
-	colorDate     = lipgloss.Color("240")
-	colorBorder   = lipgloss.Color("238")
-	colorTitle    = lipgloss.Color("69")
-	colorError    = lipgloss.Color("196")
-	colorHelp     = lipgloss.Color("238")
+	colorSelected     = lipgloss.Color("39")
+	colorHash         = lipgloss.Color("215")
+	colorAuthor       = lipgloss.Color("115")
+	colorDate         = lipgloss.Color("242")
+	colorBorder       = lipgloss.Color("237")
+	colorBorderActive = lipgloss.Color("135")
+	colorTitle        = lipgloss.Color("135")
+	colorError        = lipgloss.Color("203")
+	colorHelp         = lipgloss.Color("242")
 
-	colorRefHead   = lipgloss.Color("214")
-	colorRefLocal  = lipgloss.Color("40")
-	colorRefRemote = lipgloss.Color("33")
-	colorRefTag    = lipgloss.Color("141")
+	colorRefHead   = lipgloss.Color("215")
+	colorRefLocal  = lipgloss.Color("114")
+	colorRefRemote = lipgloss.Color("111")
+	colorRefTag    = lipgloss.Color("183")
+
+	colorDiffAdded      = lipgloss.Color("114")
+	colorDiffRemoved    = lipgloss.Color("203")
+	colorDiffHeader     = lipgloss.Color("111")
+	colorDiffHunkHeader = lipgloss.Color("242")
 
 	styleSelected = lipgloss.NewStyle().
 			Background(colorSelected).
@@ -43,14 +48,15 @@ var (
 			Foreground(colorError).
 			Bold(true)
 
-	styleBorder = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(colorBorder)
-
 	stylePane = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(colorBorder).
 			Padding(0, 1)
+
+	stylePaneActive = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(colorBorderActive).
+				Padding(0, 1)
 
 	styleRefHead = lipgloss.NewStyle().
 			Foreground(colorRefHead).
@@ -66,15 +72,15 @@ var (
 			Foreground(colorRefTag)
 
 	styleDiffAdded = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("40"))
+			Foreground(colorDiffAdded)
 
 	styleDiffRemoved = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("196"))
+			Foreground(colorDiffRemoved)
 
 	styleDiffHeader = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("33")).
+			Foreground(colorDiffHeader).
 			Bold(true)
 
 	styleDiffHunkHeader = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("240"))
+				Foreground(colorDiffHunkHeader)
 )
