@@ -15,7 +15,6 @@ type diffPane struct {
 	width    int
 	height   int
 	ready    bool
-	fileIdx  int
 }
 
 func newDiffPane() diffPane {
@@ -40,24 +39,7 @@ func (p *diffPane) setSize(w, h int) {
 func (p *diffPane) setDiff(hash string, files []model.DiffFile) {
 	p.hash = hash
 	p.files = files
-	p.fileIdx = 0
 	if p.ready {
-		p.viewport.SetContent(p.renderContent())
-		p.viewport.GotoTop()
-	}
-}
-
-func (p *diffPane) nextFile() {
-	if p.fileIdx < len(p.files)-1 {
-		p.fileIdx++
-		p.viewport.SetContent(p.renderContent())
-		p.viewport.GotoTop()
-	}
-}
-
-func (p *diffPane) prevFile() {
-	if p.fileIdx > 0 {
-		p.fileIdx--
 		p.viewport.SetContent(p.renderContent())
 		p.viewport.GotoTop()
 	}
@@ -70,29 +52,31 @@ func (p *diffPane) renderContent() string {
 
 	var sb strings.Builder
 
-	// File navigation header.
-	sb.WriteString(fmt.Sprintf("%s  %s/%s\n\n",
-		styleHelp.Render("n/p next/prev file"),
-		styleHash.Render(fmt.Sprintf("%d", p.fileIdx+1)),
+	sb.WriteString(fmt.Sprintf("%s  %s changed\n\n",
+		styleHelp.Render("all files"),
 		styleHash.Render(fmt.Sprintf("%d", len(p.files))),
 	))
 
-	file := p.files[p.fileIdx]
-	header := fmt.Sprintf("diff  %s  →  %s", file.OldPath, file.NewPath)
-	sb.WriteString(styleDiffHeader.Render(header) + "\n")
+	for i, file := range p.files {
+		if i > 0 {
+			sb.WriteString("\n")
+		}
+		header := fmt.Sprintf("diff  %s  →  %s", file.OldPath, file.NewPath)
+		sb.WriteString(styleDiffHeader.Render(header) + "\n")
 
-	for _, hunk := range file.Hunks {
-		sb.WriteString(styleDiffHunkHeader.Render(hunk.Header) + "\n")
-		for _, line := range hunk.Lines {
-			switch line.Kind {
-			case model.DiffAdded:
-				sb.WriteString(styleDiffAdded.Render(line.Text) + "\n")
-			case model.DiffRemoved:
-				sb.WriteString(styleDiffRemoved.Render(line.Text) + "\n")
-			case model.DiffHeader:
-				sb.WriteString(styleDiffHeader.Render(line.Text) + "\n")
-			default:
-				sb.WriteString(line.Text + "\n")
+		for _, hunk := range file.Hunks {
+			sb.WriteString(styleDiffHunkHeader.Render(hunk.Header) + "\n")
+			for _, line := range hunk.Lines {
+				switch line.Kind {
+				case model.DiffAdded:
+					sb.WriteString(styleDiffAdded.Render(line.Text) + "\n")
+				case model.DiffRemoved:
+					sb.WriteString(styleDiffRemoved.Render(line.Text) + "\n")
+				case model.DiffHeader:
+					sb.WriteString(styleDiffHeader.Render(line.Text) + "\n")
+				default:
+					sb.WriteString(line.Text + "\n")
+				}
 			}
 		}
 	}
@@ -108,12 +92,12 @@ func (p *diffPane) View(focused bool) string {
 
 	if p.files == nil {
 		return pane.Width(p.width - 4).Height(p.height - 2).Render(
-			styleHelp.Render("Press d to load diff"),
+			styleHelp.Render("Loading diff…"),
 		)
 	}
 
 	title := styleTitle.Render("  DIFF") + "  " +
-		styleHelp.Render("j/k scroll · n/p file · esc back")
+		styleHelp.Render("j/k scroll · esc back")
 	content := title + "\n" + p.viewport.View()
 
 	return pane.

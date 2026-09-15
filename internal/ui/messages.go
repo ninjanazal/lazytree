@@ -17,9 +17,9 @@ type MsgDiffLoaded struct {
 	Files []model.DiffFile
 }
 
-type MsgInspectLoaded struct {
-	Commit       model.Commit
-	ChangedFiles []string
+type MsgDiffDebounce struct {
+	Hash string
+	Seq  int
 }
 
 type MsgError struct {

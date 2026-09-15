@@ -3,18 +3,19 @@ package ui
 import "github.com/charmbracelet/bubbles/key"
 
 type keyMap struct {
-	Up       key.Binding
-	Down     key.Binding
-	PageUp   key.Binding
-	PageDown key.Binding
-	Top      key.Binding
-	Bottom   key.Binding
-	Enter    key.Binding
-	Back     key.Binding
-	Diff     key.Binding
-	Search   key.Binding
-	Toggle   key.Binding
-	Quit     key.Binding
+	Up          key.Binding
+	Down        key.Binding
+	PageUp      key.Binding
+	PageDown    key.Binding
+	Top         key.Binding
+	Bottom      key.Binding
+	Enter       key.Binding
+	Back        key.Binding
+	Diff        key.Binding
+	Search      key.Binding
+	Toggle      key.Binding
+	FocusSwitch key.Binding
+	Quit        key.Binding
 }
 
 var keys = keyMap{
@@ -44,7 +45,7 @@ var keys = keyMap{
 	),
 	Enter: key.NewBinding(
 		key.WithKeys("enter"),
-		key.WithHelp("enter", "inspect"),
+		key.WithHelp("enter", "diff"),
 	),
 	Back: key.NewBinding(
 		key.WithKeys("esc"),
@@ -62,6 +63,10 @@ var keys = keyMap{
 		key.WithKeys("a"),
 		key.WithHelp("a", "toggle all refs"),
 	),
+	FocusSwitch: key.NewBinding(
+		key.WithKeys("tab"),
+		key.WithHelp("tab", "focus diff/log"),
+	),
 	Quit: key.NewBinding(
 		key.WithKeys("q", "ctrl+c"),
 		key.WithHelp("q", "quit"),
@@ -70,6 +75,6 @@ var keys = keyMap{
 
 func (k keyMap) helpView() string {
 	return styleHelp.Render(
-		"j/k scroll · enter inspect · d diff · / search · a toggle · q quit",
+		"j/k scroll · tab focus diff · enter/d full diff · / search · a toggle · q quit",
 	)
 }

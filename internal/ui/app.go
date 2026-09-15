@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -11,37 +12,44 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/eurico-martins/lazytree/internal/git"
 	graphpkg "github.com/eurico-martins/lazytree/internal/graph"
-	"github.com/eurico-martins/lazytree/internal/model"
 )
 
 const narrowThreshold = 120
 const pageSize = 500
+const diffDebounce = 150 * time.Millisecond
 
 type viewMode int
 
 const (
 	modeLog viewMode = iota
-	modeInspect
 	modeDiff
 	modeSearch
 )
 
+type focusPane int
+
+const (
+	focusLog focusPane = iota
+	focusDiff
+)
+
 type AppModel struct {
-	runner  *git.Runner
-	log     logPane
-	inspect inspectPane
-	diff    diffPane
-	search  searchModel
-	spinner spinner.Model
-	mode    viewMode
-	width   int
-	height  int
-	narrow  bool
-	loading bool
+	runner      *git.Runner
+	log         logPane
+	diff        diffPane
+	search      searchModel
+	spinner     spinner.Model
+	mode        viewMode
+	focus       focusPane
+	width       int
+	height      int
+	narrow      bool
+	loading     bool
 	loadedCount int
-	showAll bool
-	err     error
-	cancel  context.CancelFunc
+	showAll     bool
+	err         error
+	cancel      context.CancelFunc
+	debounceSeq int
 }
 
 func NewApp(runner *git.Runner) AppModel {
@@ -51,7 +59,6 @@ func NewApp(runner *git.Runner) AppModel {
 	return AppModel{
 		runner:  runner,
 		log:     newLogPane(),
-		inspect: newInspectPane(),
 		diff:    newDiffPane(),
 		search:  newSearchModel(),
 		spinner: sp,
@@ -94,15 +101,26 @@ func (m AppModel) loadDiffCmd(hash string) tea.Cmd {
 	}
 }
 
-func (m AppModel) loadInspectCmd(c model.Commit) tea.Cmd {
-	return func() tea.Msg {
-		ctx := context.Background()
-		files, err := git.FetchChangedFiles(ctx, m.runner, c.Hash)
-		if err != nil {
-			return MsgError{Err: err}
-		}
-		return MsgInspectLoaded{Commit: c, ChangedFiles: files}
+// scheduleDiffLoad bumps the debounce sequence and returns a tea.Cmd that,
+// after diffDebounce has elapsed with no further cursor movement, requests
+// the diff for hash.
+func (m *AppModel) scheduleDiffLoad(hash string) tea.Cmd {
+	m.debounceSeq++
+	seq := m.debounceSeq
+	return tea.Tick(diffDebounce, func(time.Time) tea.Msg {
+		return MsgDiffDebounce{Hash: hash, Seq: seq}
+	})
+}
+
+// diffCmdIfChanged returns a Cmd to (debounce-)load the diff for the
+// currently selected commit, if it differs from what's already loaded or
+// pending.
+func (m *AppModel) diffCmdIfChanged() tea.Cmd {
+	c := m.log.selectedCommit()
+	if c == nil || c.Hash == m.diff.hash {
+		return nil
 	}
+	return m.scheduleDiffLoad(c.Hash)
 }
 
 func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -135,6 +153,9 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.loading = true
 			cmds = append(cmds, m.loadCommitsCmd(len(msg.Commits)))
 		}
+		if cmd := m.diffCmdIfChanged(); cmd != nil {
+			cmds = append(cmds, cmd)
+		}
 
 	case MsgCommitsBatch:
 		all := append(m.log.commits, msg.Commits...)
@@ -147,13 +168,17 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.loading = false
 		}
 
-	case MsgInspectLoaded:
-		m.inspect.setCommit(msg.Commit, msg.ChangedFiles)
-		m.mode = modeInspect
+	case MsgDiffDebounce:
+		if msg.Seq == m.debounceSeq {
+			if c := m.log.selectedCommit(); c != nil && c.Hash == msg.Hash {
+				cmds = append(cmds, m.loadDiffCmd(msg.Hash))
+			}
+		}
 
 	case MsgDiffLoaded:
-		m.diff.setDiff(msg.Hash, msg.Files)
-		m.mode = modeDiff
+		if c := m.log.selectedCommit(); c != nil && c.Hash == msg.Hash {
+			m.diff.setDiff(msg.Hash, msg.Files)
+		}
 
 	case MsgError:
 		m.err = msg.Err
@@ -169,11 +194,10 @@ func (m AppModel) updateKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 
 	case key.Matches(msg, keys.Back):
-		switch m.mode {
-		case modeDiff:
-			m.mode = modeInspect
-		case modeInspect:
+		if m.mode == modeDiff {
 			m.mode = modeLog
+		} else if m.focus == focusDiff {
+			m.focus = focusLog
 		}
 
 	case key.Matches(msg, keys.Search):
@@ -183,11 +207,18 @@ func (m AppModel) updateKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keys.Toggle):
 		m.showAll = !m.showAll
 
+	case key.Matches(msg, keys.FocusSwitch) && m.mode == modeLog && !m.narrow:
+		if m.focus == focusLog {
+			m.focus = focusDiff
+		} else {
+			m.focus = focusLog
+		}
+
+	case m.mode == modeLog && m.focus == focusDiff:
+		return m.updateDiffKeys(msg)
+
 	case m.mode == modeLog:
 		return m.updateLogKeys(msg)
-
-	case m.mode == modeInspect:
-		return m.updateInspectKeys(msg)
 
 	case m.mode == modeDiff:
 		return m.updateDiffKeys(msg)
@@ -210,30 +241,15 @@ func (m AppModel) updateLogKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.log.moveTop()
 	case key.Matches(msg, keys.Bottom):
 		m.log.moveBottom()
-	case key.Matches(msg, keys.Enter):
-		if c := m.log.selectedCommit(); c != nil {
-			return m, m.loadInspectCmd(*c)
+	case key.Matches(msg, keys.Enter), key.Matches(msg, keys.Diff):
+		if m.narrow {
+			m.mode = modeDiff
 		}
+		return m, nil
+	default:
+		return m, nil
 	}
-	return m, nil
-}
-
-func (m AppModel) updateInspectKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch {
-	case key.Matches(msg, keys.Diff):
-		if c := m.log.selectedCommit(); c != nil {
-			return m, m.loadDiffCmd(c.Hash)
-		}
-	case key.Matches(msg, keys.Up):
-		m.inspect.viewport.ScrollUp(1)
-	case key.Matches(msg, keys.Down):
-		m.inspect.viewport.ScrollDown(1)
-	case key.Matches(msg, keys.PageUp):
-		m.inspect.viewport.HalfPageUp()
-	case key.Matches(msg, keys.PageDown):
-		m.inspect.viewport.HalfPageDown()
-	}
-	return m, nil
+	return m, m.diffCmdIfChanged()
 }
 
 func (m AppModel) updateDiffKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -246,10 +262,10 @@ func (m AppModel) updateDiffKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.diff.viewport.HalfPageUp()
 	case key.Matches(msg, keys.PageDown):
 		m.diff.viewport.HalfPageDown()
-	case msg.String() == "n":
-		m.diff.nextFile()
-	case msg.String() == "p":
-		m.diff.prevFile()
+	case key.Matches(msg, keys.Top):
+		m.diff.viewport.GotoTop()
+	case key.Matches(msg, keys.Bottom):
+		m.diff.viewport.GotoBottom()
 	}
 	return m, nil
 }
@@ -277,14 +293,12 @@ func (m *AppModel) applyLayout() {
 	if m.narrow {
 		// Single pane: full width.
 		m.log.setSize(m.width, m.height-1)
-		m.inspect.setSize(m.width, m.height-1)
 		m.diff.setSize(m.width, m.height-1)
 	} else {
 		// Wide: 60/40 split.
 		left := m.width * 60 / 100
 		right := m.width - left
 		m.log.setSize(left, m.height-1)
-		m.inspect.setSize(right, m.height-1)
 		m.diff.setSize(right, m.height-1)
 	}
 }
@@ -306,8 +320,6 @@ func (m AppModel) View() string {
 
 	if m.narrow {
 		switch m.mode {
-		case modeInspect:
-			return m.inspect.View(true) + "\n" + status
 		case modeDiff:
 			return m.diff.View(true) + "\n" + status
 		default:
@@ -315,18 +327,11 @@ func (m AppModel) View() string {
 		}
 	}
 
-	// Wide layout: log on left, detail on right.
-	var right string
-	switch m.mode {
-	case modeInspect:
-		right = m.inspect.View(true)
-	case modeDiff:
-		right = m.diff.View(true)
-	default:
-		right = m.inspect.View(false)
-	}
-
-	main := lipgloss.JoinHorizontal(lipgloss.Top, m.log.View(m.mode == modeLog), right)
+	// Wide layout: log on left, live diff on right.
+	main := lipgloss.JoinHorizontal(lipgloss.Top,
+		m.log.View(m.focus == focusLog),
+		m.diff.View(m.focus == focusDiff),
+	)
 	return main + "\n" + status
 }
 
@@ -341,10 +346,7 @@ func (m AppModel) statusBar() string {
 	if m.showAll {
 		parts = append(parts, "all refs")
 	}
-	switch m.mode {
-	case modeInspect:
-		parts = append(parts, "inspect")
-	case modeDiff:
+	if m.mode == modeDiff {
 		parts = append(parts, "diff")
 	}
 
