@@ -3,7 +3,7 @@ package ui
 import (
 	"context"
 	"fmt"
-	"strings"
+	"path/filepath"
 	"time"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -12,9 +12,9 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/eurico-martins/lazytree/internal/git"
 	graphpkg "github.com/eurico-martins/lazytree/internal/graph"
+	"github.com/eurico-martins/lazytree/internal/model"
 )
 
-const narrowThreshold = 120
 const pageSize = 500
 const diffDebounce = 150 * time.Millisecond
 
@@ -22,15 +22,7 @@ type viewMode int
 
 const (
 	modeLog viewMode = iota
-	modeDiff
 	modeSearch
-)
-
-type focusPane int
-
-const (
-	focusLog focusPane = iota
-	focusDiff
 )
 
 type AppModel struct {
@@ -40,15 +32,15 @@ type AppModel struct {
 	search      searchModel
 	spinner     spinner.Model
 	mode        viewMode
-	focus       focusPane
+	popupOpen   bool
 	width       int
 	height      int
-	narrow      bool
 	loading     bool
 	loadedCount int
 	showAll     bool
+	repoName    string
+	branch      string
 	err         error
-	cancel      context.CancelFunc
 	debounceSeq int
 }
 
@@ -57,12 +49,13 @@ func NewApp(runner *git.Runner) AppModel {
 	sp.Spinner = spinner.Dot
 
 	return AppModel{
-		runner:  runner,
-		log:     newLogPane(),
-		diff:    newDiffPane(),
-		search:  newSearchModel(),
-		spinner: sp,
-		showAll: true,
+		runner:   runner,
+		log:      newLogPane(),
+		diff:     newDiffPane(),
+		search:   newSearchModel(),
+		spinner:  sp,
+		showAll:  true,
+		repoName: filepath.Base(runner.RepoPath),
 	}
 }
 
@@ -70,17 +63,40 @@ func (m AppModel) Init() tea.Cmd {
 	return tea.Batch(
 		m.spinner.Tick,
 		m.loadCommitsCmd(0),
+		m.loadBranchCmd(),
 	)
 }
 
-func (m AppModel) loadCommitsCmd(offset int) tea.Cmd {
+func (m AppModel) loadBranchCmd() tea.Cmd {
 	return func() tea.Msg {
-		ctx, cancel := context.WithCancel(context.Background())
-		_ = cancel // managed by caller
-		args := []string{"--all", fmt.Sprintf("--skip=%d", offset), fmt.Sprintf("--max-count=%d", pageSize)}
+		branch, err := git.CurrentBranch(context.Background(), m.runner)
+		if err != nil {
+			return nil
+		}
+		return MsgBranchInfo{Branch: branch}
+	}
+}
+
+// logArgs builds the git log args for the current showAll setting: --all
+// includes every ref, otherwise git log defaults to the current branch (HEAD).
+func (m AppModel) logArgs(offset int) []string {
+	args := []string{fmt.Sprintf("--skip=%d", offset), fmt.Sprintf("--max-count=%d", pageSize)}
+	if m.showAll {
+		args = append([]string{"--all"}, args...)
+	}
+	return args
+}
+
+func (m AppModel) loadCommitsCmd(offset int) tea.Cmd {
+	args := m.logArgs(offset)
+	return func() tea.Msg {
+		ctx := context.Background()
 		commits, err := git.FetchLog(ctx, m.runner, args...)
 		if err != nil {
 			return MsgError{Err: err}
+		}
+		if refsByHash, err := git.BuildRefsByHash(ctx, m.runner); err == nil {
+			git.AttachRefs(commits, refsByHash)
 		}
 		if offset == 0 {
 			layout := graphpkg.Layout(commits)
@@ -136,7 +152,6 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		m.narrow = msg.Width < narrowThreshold
 		m.applyLayout()
 
 	case spinner.TickMsg:
@@ -183,6 +198,9 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case MsgError:
 		m.err = msg.Err
 		m.loading = false
+
+	case MsgBranchInfo:
+		m.branch = msg.Branch
 	}
 
 	return m, tea.Batch(cmds...)
@@ -194,11 +212,10 @@ func (m AppModel) updateKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 
 	case key.Matches(msg, keys.Back):
-		if m.mode == modeDiff {
-			m.mode = modeLog
-		} else if m.focus == focusDiff {
-			m.focus = focusLog
-		}
+		m.popupOpen = false
+
+	case m.popupOpen:
+		return m.updatePopupKeys(msg)
 
 	case key.Matches(msg, keys.Search):
 		m.mode = modeSearch
@@ -206,22 +223,12 @@ func (m AppModel) updateKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keys.Toggle):
 		m.showAll = !m.showAll
+		m.loading = true
+		m.log.setCommits(nil, model.GraphLayout{})
+		return m, m.loadCommitsCmd(0)
 
-	case key.Matches(msg, keys.FocusSwitch) && m.mode == modeLog && !m.narrow:
-		if m.focus == focusLog {
-			m.focus = focusDiff
-		} else {
-			m.focus = focusLog
-		}
-
-	case m.mode == modeLog && m.focus == focusDiff:
-		return m.updateDiffKeys(msg)
-
-	case m.mode == modeLog:
+	default:
 		return m.updateLogKeys(msg)
-
-	case m.mode == modeDiff:
-		return m.updateDiffKeys(msg)
 	}
 
 	return m, nil
@@ -241,18 +248,16 @@ func (m AppModel) updateLogKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.log.moveTop()
 	case key.Matches(msg, keys.Bottom):
 		m.log.moveBottom()
-	case key.Matches(msg, keys.Enter), key.Matches(msg, keys.Diff):
-		if m.narrow {
-			m.mode = modeDiff
-		}
-		return m, nil
+	case key.Matches(msg, keys.Enter):
+		m.popupOpen = true
+		return m, m.diffCmdIfChanged()
 	default:
 		return m, nil
 	}
-	return m, m.diffCmdIfChanged()
+	return m, nil
 }
 
-func (m AppModel) updateDiffKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m AppModel) updatePopupKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, keys.Up):
 		m.diff.viewport.ScrollUp(1)
@@ -289,19 +294,23 @@ func (m AppModel) updateSearch(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+const (
+	toolbarHeight  = 1
+	footerHeight   = 1
+	popupWidthPct  = 80
+	popupHeightPct = 80
+	sideMargin     = 2
+)
+
 func (m *AppModel) applyLayout() {
-	if m.narrow {
-		// Single pane: full width.
-		m.log.setSize(m.width, m.height-1)
-		m.diff.setSize(m.width, m.height-1)
-	} else {
-		// Wide: 60/40 split.
-		left := m.width * 60 / 100
-		right := m.width - left
-		m.log.setSize(left, m.height-1)
-		m.diff.setSize(right, m.height-1)
-	}
+	contentWidth := max(m.width-2*sideMargin, 1)
+	m.log.setSize(contentWidth, m.height-toolbarHeight-footerHeight)
+	popupW := m.width * popupWidthPct / 100
+	popupH := m.height * popupHeightPct / 100
+	m.diff.setSize(popupW, popupH)
 }
+
+var styleMargin = lipgloss.NewStyle().Padding(0, sideMargin)
 
 func (m AppModel) View() string {
 	if m.err != nil {
@@ -312,71 +321,20 @@ func (m AppModel) View() string {
 		return ""
 	}
 
-	status := m.statusBar()
+	contentWidth := max(m.width-2*sideMargin, 1)
+	toolbar := renderToolbar(contentWidth, m.repoName, m.branch, m.showAll)
+	footer := renderFooter(contentWidth, m.loading, m.spinner.View(), m.loadedCount, m.showAll, m.log.cursor, m.log.visibleCount())
 
 	if m.mode == modeSearch {
-		return m.log.View(true) + "\n" + m.search.View() + "\n" + status
+		content := toolbar + "\n" + m.log.View(true) + "\n" + m.search.View() + "\n" + footer
+		return styleMargin.Render(content)
 	}
 
-	if m.narrow {
-		switch m.mode {
-		case modeDiff:
-			return m.diff.View(true) + "\n" + status
-		default:
-			return m.log.View(true) + "\n" + status
-		}
+	base := styleMargin.Render(toolbar + "\n" + m.log.View(true) + "\n" + footer)
+
+	if m.popupOpen {
+		return overlayCenter(base, m.diff.View(true), m.width, m.height)
 	}
 
-	// Wide layout: log on left, live diff on right.
-	main := lipgloss.JoinHorizontal(lipgloss.Top,
-		m.log.View(m.focus == focusLog),
-		m.diff.View(m.focus == focusDiff),
-	)
-	return main + "\n" + status
-}
-
-func (m AppModel) statusBar() string {
-	var parts []string
-	if m.loading {
-		parts = append(parts, m.spinner.View()+" loading…")
-	}
-	if m.loadedCount > 0 {
-		parts = append(parts, fmt.Sprintf("%d commits", m.loadedCount))
-	}
-	if m.showAll {
-		parts = append(parts, "all refs")
-	}
-	if m.mode == modeDiff {
-		parts = append(parts, "diff")
-	}
-
-	left := styleHelp.Render("lazytree")
-	right := ""
-	if len(parts) > 0 {
-		right = styleHelp.Render(" · ")
-		for i, p := range parts {
-			if i > 0 {
-				right += styleHelp.Render(" · ")
-			}
-			right += styleHelp.Render(p)
-		}
-	}
-
-	bar := left + right
-	padding := m.width - lipgloss.Width(bar)
-	if padding > 0 {
-		bar += styleHelp.Render(repeatStr(" ", padding))
-	}
-	return bar
-}
-
-func repeatStr(s string, n int) string {
-	if n <= 0 {
-		return ""
-	}
-	var sb strings.Builder
-	for range n {
-		sb.WriteString(s)
-	}
-	return sb.String()
+	return base
 }

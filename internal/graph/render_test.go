@@ -14,16 +14,32 @@ func stripANSI(s string) string {
 }
 
 func TestRenderCommitLine_LinearNoDiagonal(t *testing.T) {
+	// A plain single-lane continuation stays on one row — no extra
+	// connector row is spent unless the topology actually changes here, so
+	// straight history stays compact.
 	node := model.GraphNode{CommitIndex: 0, Lane: 0, Parents: []int{0}, Color: 0}
 	next := model.GraphNode{CommitIndex: 1, Lane: 0, Parents: nil, Color: 0}
 	activeLanes := map[int]bool{}
 	got := stripANSI(RenderCommitLine(node, &next, activeLanes, 1))
-	want := "o"
+	want := "●"
 	if got != want {
 		t.Errorf("got %q, want %q", got, want)
 	}
 	if !activeLanes[0] {
 		t.Errorf("lane 0 should remain active for a first-parent continuation")
+	}
+}
+
+func TestRenderCommitLine_RootCommitNoConnector(t *testing.T) {
+	// A root commit (no parents) has nothing continuing below it, so no
+	// connector line should be drawn even though there is a next node.
+	node := model.GraphNode{CommitIndex: 0, Lane: 0, Parents: nil, Color: 0}
+	next := model.GraphNode{CommitIndex: 1, Lane: 0, Parents: nil, Color: 0}
+	activeLanes := map[int]bool{}
+	got := stripANSI(RenderCommitLine(node, &next, activeLanes, 1))
+	want := "●"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
 	}
 }
 
@@ -33,7 +49,7 @@ func TestRenderCommitLine_MergeDiagonal(t *testing.T) {
 	next := model.GraphNode{CommitIndex: 1, Lane: 1, Parents: nil, Color: 1}
 	activeLanes := map[int]bool{}
 	got := stripANSI(RenderCommitLine(node, &next, activeLanes, 2))
-	wantCommit := "o  "
+	wantCommit := "●  "
 	gotCommit, gotConn, hasConn := cutLine(got)
 	if gotCommit != wantCommit {
 		t.Errorf("commit line: got %q, want %q", gotCommit, wantCommit)

@@ -53,29 +53,32 @@ var (
 			BorderForeground(colorBorder).
 			Padding(0, 1)
 
-	stylePaneActive = lipgloss.NewStyle().
-				Border(lipgloss.RoundedBorder()).
-				BorderForeground(colorBorderActive).
-				Padding(0, 1)
-
 	styleRefHead = lipgloss.NewStyle().
-			Foreground(colorRefHead).
-			Bold(true)
+			Foreground(lipgloss.Color("0")).
+			Background(colorRefHead).
+			Bold(true).
+			Padding(0, 1)
 
 	styleRefLocal = lipgloss.NewStyle().
-			Foreground(colorRefLocal)
+			Foreground(lipgloss.Color("0")).
+			Background(colorRefLocal).
+			Padding(0, 1)
 
 	styleRefRemote = lipgloss.NewStyle().
-			Foreground(colorRefRemote)
+			Foreground(lipgloss.Color("0")).
+			Background(colorRefRemote).
+			Padding(0, 1)
 
 	styleRefTag = lipgloss.NewStyle().
-			Foreground(colorRefTag)
+			Foreground(lipgloss.Color("0")).
+			Background(colorRefTag).
+			Padding(0, 1)
 
 	styleDiffAdded = lipgloss.NewStyle().
 			Foreground(colorDiffAdded)
 
 	styleDiffRemoved = lipgloss.NewStyle().
-			Foreground(colorDiffRemoved)
+				Foreground(colorDiffRemoved)
 
 	styleDiffHeader = lipgloss.NewStyle().
 			Foreground(colorDiffHeader).
@@ -83,4 +86,22 @@ var (
 
 	styleDiffHunkHeader = lipgloss.NewStyle().
 				Foreground(colorDiffHunkHeader)
+
+	styleHeader = lipgloss.NewStyle().
+			Foreground(colorHelp).
+			Bold(true)
+
+	styleToolbar = lipgloss.NewStyle()
+
+	styleToolbarPill = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("231")).
+				Background(colorBorderActive).
+				Padding(0, 1)
+
+	styleFooter = lipgloss.NewStyle()
+
+	stylePopup = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(colorBorderActive).
+			Padding(0, 1)
 )

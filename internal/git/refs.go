@@ -57,12 +57,11 @@ func classifyRef(refname string, isHead bool) model.Ref {
 }
 
 // AttachRefs merges ref information into commits by matching hashes.
-func AttachRefs(commits []model.Commit, refs []model.Ref, refsByHash map[string][]model.Ref) {
+func AttachRefs(commits []model.Commit, refsByHash map[string][]model.Ref) {
 	for i, c := range commits {
 		if rs, ok := refsByHash[c.Hash]; ok {
 			commits[i].Refs = rs
 		}
-		_ = c
 	}
 }
 
@@ -121,6 +120,19 @@ func BuildRefsByHash(ctx context.Context, r *Runner) (map[string][]model.Ref, er
 	parseLines(raw)
 	parseLines(rawDeref)
 	return result, nil
+}
+
+// CurrentBranch returns the current branch name, or "" if HEAD is detached.
+func CurrentBranch(ctx context.Context, r *Runner) (string, error) {
+	raw, err := r.Run(ctx, "rev-parse", "--abbrev-ref", "HEAD")
+	if err != nil {
+		return "", err
+	}
+	name := strings.TrimSpace(string(raw))
+	if name == "HEAD" {
+		return "", nil
+	}
+	return name, nil
 }
 
 // FetchChangedFiles returns the list of files changed in a commit.

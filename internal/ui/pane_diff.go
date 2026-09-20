@@ -85,10 +85,7 @@ func (p *diffPane) renderContent() string {
 }
 
 func (p *diffPane) View(focused bool) string {
-	pane := stylePane
-	if focused {
-		pane = stylePaneActive
-	}
+	pane := stylePopup
 
 	if p.files == nil {
 		return pane.Width(p.width - 4).Height(p.height - 2).Render(
@@ -96,8 +93,13 @@ func (p *diffPane) View(focused bool) string {
 		)
 	}
 
-	title := styleTitle.Render("  DIFF") + "  " +
-		styleHelp.Render("j/k scroll · esc back")
+	shortHash := p.hash
+	if len(shortHash) > 8 {
+		shortHash = shortHash[:8]
+	}
+
+	title := styleTitle.Render(" "+shortHash) + "  " +
+		styleHelp.Render("j/k scroll · esc to close")
 	content := title + "\n" + p.viewport.View()
 
 	return pane.

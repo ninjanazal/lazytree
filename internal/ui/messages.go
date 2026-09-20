@@ -22,6 +22,10 @@ type MsgDiffDebounce struct {
 	Seq  int
 }
 
+type MsgBranchInfo struct {
+	Branch string
+}
+
 type MsgError struct {
 	Err error
 }

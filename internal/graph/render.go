@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	glyphCommit = "o"
+	glyphCommit = "●"
 	glyphVert   = "│"
 	glyphHoriz  = "─"
 	glyphArcDR  = "╭" // connects down and right
@@ -56,6 +56,10 @@ func RenderCommitLine(node model.GraphNode, next *model.GraphNode, activeLanes m
 		newActive[pl] = true
 	}
 
+	// Only spend an extra row on a connector when the topology actually
+	// changes here (a merge opening a lane, or a branch collapsing into an
+	// existing one) — plain single-lane continuations stay on one row, so
+	// straight history doesn't double its vertical footprint.
 	needsDiagonal := false
 	for _, pl := range node.Parents {
 		if pl != node.Lane {
