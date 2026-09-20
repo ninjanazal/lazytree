@@ -41,12 +41,37 @@ func (p *logPane) setSize(w, h int) {
 }
 
 func (p *logPane) setCommits(commits []model.Commit, layout model.GraphLayout) {
+	var prevHash string
+	if c := p.selectedCommit(); c != nil {
+		prevHash = c.Hash
+	}
+	prevDelta := p.cursor - p.offset
+
 	p.commits = commits
 	p.layout = layout
+	p.filtered = nil
+
+	if prevHash != "" {
+		if idx := indexOfHash(commits, prevHash); idx >= 0 {
+			p.cursor = idx
+			p.offset = max(0, p.cursor-prevDelta)
+			return
+		}
+	}
+
 	if p.cursor >= len(commits) {
 		p.cursor = max(0, len(commits)-1)
 	}
-	p.filtered = nil
+	p.offset = 0
+}
+
+func indexOfHash(commits []model.Commit, hash string) int {
+	for i, c := range commits {
+		if c.Hash == hash {
+			return i
+		}
+	}
+	return -1
 }
 
 func (p *logPane) selectedCommit() *model.Commit {

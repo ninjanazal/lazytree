@@ -17,12 +17,16 @@ import (
 
 const pageSize = 500
 const diffDebounce = 150 * time.Millisecond
+const fetchInterval = 60 * time.Second
+const fetchTimeout = 30 * time.Second
+const animInterval = 120 * time.Millisecond
 
 type viewMode int
 
 const (
 	modeLog viewMode = iota
 	modeSearch
+	modeZen
 )
 
 type AppModel struct {
@@ -30,6 +34,7 @@ type AppModel struct {
 	log         logPane
 	diff        diffPane
 	search      searchModel
+	zen         zenPane
 	spinner     spinner.Model
 	mode        viewMode
 	popupOpen   bool
@@ -42,6 +47,13 @@ type AppModel struct {
 	branch      string
 	err         error
 	debounceSeq int
+
+	fetchSeq      int  // guards the self-rescheduling MsgFetchTick chain
+	fetchInFlight bool // true while a background `git fetch` is running
+	reloadGen     int  // guards stale MsgCommitsLoaded/MsgCommitsBatch from a
+	// reload superseded by a newer one (Toggle vs. background fetch)
+
+	animSeq int // guards the self-rescheduling MsgAnimationTick chain (zen mode)
 }
 
 func NewApp(runner *git.Runner) AppModel {
@@ -53,6 +65,7 @@ func NewApp(runner *git.Runner) AppModel {
 		log:      newLogPane(),
 		diff:     newDiffPane(),
 		search:   newSearchModel(),
+		zen:      newZenPane(),
 		spinner:  sp,
 		showAll:  true,
 		repoName: filepath.Base(runner.RepoPath),
@@ -62,9 +75,43 @@ func NewApp(runner *git.Runner) AppModel {
 func (m AppModel) Init() tea.Cmd {
 	return tea.Batch(
 		m.spinner.Tick,
-		m.loadCommitsCmd(0),
+		m.loadCommitsCmd(0, m.reloadGen),
 		m.loadBranchCmd(),
+		m.scheduleFetchTick(),
 	)
+}
+
+// scheduleFetchTick bumps the fetch sequence and returns a tea.Cmd that,
+// after fetchInterval has elapsed, requests a background git fetch.
+func (m *AppModel) scheduleFetchTick() tea.Cmd {
+	m.fetchSeq++
+	seq := m.fetchSeq
+	return tea.Tick(fetchInterval, func(time.Time) tea.Msg {
+		return MsgFetchTick{Seq: seq}
+	})
+}
+
+// scheduleAnimTick bumps the animation sequence and returns a tea.Cmd that,
+// after animInterval has elapsed, advances zen mode's grow/breathe
+// animation. Callers stop the chain simply by not rescheduling once zen
+// mode has been left.
+func (m *AppModel) scheduleAnimTick() tea.Cmd {
+	m.animSeq++
+	seq := m.animSeq
+	return tea.Tick(animInterval, func(time.Time) tea.Msg {
+		return MsgAnimationTick{Seq: seq}
+	})
+}
+
+// fetchCmd runs `git fetch` in the background. Errors are reported via
+// MsgFetchResult but are otherwise swallowed by the caller (live fetch is
+// silent on failure).
+func (m AppModel) fetchCmd() tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), fetchTimeout)
+		defer cancel()
+		return MsgFetchResult{Err: git.Fetch(ctx, m.runner)}
+	}
 }
 
 func (m AppModel) loadBranchCmd() tea.Cmd {
@@ -87,7 +134,7 @@ func (m AppModel) logArgs(offset int) []string {
 	return args
 }
 
-func (m AppModel) loadCommitsCmd(offset int) tea.Cmd {
+func (m AppModel) loadCommitsCmd(offset, gen int) tea.Cmd {
 	args := m.logArgs(offset)
 	return func() tea.Msg {
 		ctx := context.Background()
@@ -100,9 +147,9 @@ func (m AppModel) loadCommitsCmd(offset int) tea.Cmd {
 		}
 		if offset == 0 {
 			layout := graphpkg.Layout(commits)
-			return MsgCommitsLoaded{Commits: commits, Layout: layout}
+			return MsgCommitsLoaded{Commits: commits, Layout: layout, Gen: gen}
 		}
-		return MsgCommitsBatch{Commits: commits, Offset: offset}
+		return MsgCommitsBatch{Commits: commits, Offset: offset, Gen: gen}
 	}
 }
 
@@ -159,29 +206,58 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.spinner, cmd = m.spinner.Update(msg)
 		cmds = append(cmds, cmd)
 
+	case MsgAnimationTick:
+		if msg.Seq == m.animSeq && m.mode == modeZen {
+			m.zen.advance()
+			cmds = append(cmds, m.scheduleAnimTick())
+		}
+
 	case MsgCommitsLoaded:
+		if msg.Gen != m.reloadGen {
+			break // superseded by a newer reload
+		}
 		m.loading = false
 		m.loadedCount = len(msg.Commits)
 		m.log.setCommits(msg.Commits, msg.Layout)
 		// Load more if there might be more commits.
 		if len(msg.Commits) == pageSize {
 			m.loading = true
-			cmds = append(cmds, m.loadCommitsCmd(len(msg.Commits)))
+			cmds = append(cmds, m.loadCommitsCmd(len(msg.Commits), msg.Gen))
 		}
 		if cmd := m.diffCmdIfChanged(); cmd != nil {
 			cmds = append(cmds, cmd)
 		}
 
 	case MsgCommitsBatch:
+		if msg.Gen != m.reloadGen {
+			break
+		}
 		all := append(m.log.commits, msg.Commits...)
 		layout := graphpkg.Layout(all)
 		m.log.setCommits(all, layout)
 		m.loadedCount = len(all)
 		if len(msg.Commits) == pageSize {
-			cmds = append(cmds, m.loadCommitsCmd(len(all)))
+			cmds = append(cmds, m.loadCommitsCmd(len(all), msg.Gen))
 		} else {
 			m.loading = false
 		}
+
+	case MsgFetchTick:
+		if msg.Seq == m.fetchSeq {
+			cmds = append(cmds, m.scheduleFetchTick())
+			if !m.fetchInFlight {
+				m.fetchInFlight = true
+				cmds = append(cmds, m.fetchCmd())
+			}
+		}
+
+	case MsgFetchResult:
+		m.fetchInFlight = false
+		if msg.Err == nil {
+			m.reloadGen++
+			cmds = append(cmds, m.loadCommitsCmd(0, m.reloadGen))
+		}
+		// On error: swallow silently, the next tick retries.
 
 	case MsgDiffDebounce:
 		if msg.Seq == m.debounceSeq {
@@ -213,6 +289,22 @@ func (m AppModel) updateKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keys.Back):
 		m.popupOpen = false
+		if m.mode == modeZen {
+			m.mode = modeLog
+		}
+
+	case key.Matches(msg, keys.Zen):
+		if m.mode == modeZen {
+			m.mode = modeLog
+			return m, nil
+		}
+		m.zen.setSize(m.width, m.height)
+		m.zen.rebuild(m.repoName, m.log.commits, m.log.layout)
+		m.mode = modeZen
+		return m, m.scheduleAnimTick()
+
+	case m.mode == modeZen:
+		return m, nil
 
 	case m.popupOpen:
 		return m.updatePopupKeys(msg)
@@ -225,7 +317,8 @@ func (m AppModel) updateKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.showAll = !m.showAll
 		m.loading = true
 		m.log.setCommits(nil, model.GraphLayout{})
-		return m, m.loadCommitsCmd(0)
+		m.reloadGen++
+		return m, m.loadCommitsCmd(0, m.reloadGen)
 
 	default:
 		return m.updateLogKeys(msg)
@@ -308,6 +401,7 @@ func (m *AppModel) applyLayout() {
 	popupW := m.width * popupWidthPct / 100
 	popupH := m.height * popupHeightPct / 100
 	m.diff.setSize(popupW, popupH)
+	m.zen.setSize(m.width, m.height)
 }
 
 var styleMargin = lipgloss.NewStyle().Padding(0, sideMargin)
@@ -319,6 +413,10 @@ func (m AppModel) View() string {
 
 	if m.width == 0 {
 		return ""
+	}
+
+	if m.mode == modeZen {
+		return m.zen.View()
 	}
 
 	contentWidth := max(m.width-2*sideMargin, 1)

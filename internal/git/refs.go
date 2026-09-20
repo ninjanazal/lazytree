@@ -68,7 +68,7 @@ func AttachRefs(commits []model.Commit, refsByHash map[string][]model.Ref) {
 // BuildRefsByHash runs for-each-ref and maps full commit hash → []Ref.
 func BuildRefsByHash(ctx context.Context, r *Runner) (map[string][]model.Ref, error) {
 	raw, err := r.Run(ctx, "for-each-ref",
-		"--format=%(objectname:long)\t%(refname)\t*%(objectname:long)",
+		"--format=%(objectname)\t%(refname)\t*%(objectname)",
 		"refs/heads", "refs/remotes", "refs/tags",
 	)
 	if err != nil {
@@ -80,7 +80,7 @@ func BuildRefsByHash(ctx context.Context, r *Runner) (map[string][]model.Ref, er
 
 	// Also get dereferenced tag targets
 	rawDeref, _ := r.Run(ctx, "for-each-ref",
-		"--format=%(objectname:long)\t%(refname)\t%(object)",
+		"--format=%(objectname)\t%(refname)\t%(object)",
 		"--dereference",
 		"refs/heads", "refs/remotes", "refs/tags",
 	)

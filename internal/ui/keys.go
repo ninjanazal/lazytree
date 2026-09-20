@@ -13,6 +13,7 @@ type keyMap struct {
 	Back     key.Binding
 	Search   key.Binding
 	Toggle   key.Binding
+	Zen      key.Binding
 	Quit     key.Binding
 }
 
@@ -57,6 +58,10 @@ var keys = keyMap{
 		key.WithKeys("a"),
 		key.WithHelp("a", "refs"),
 	),
+	Zen: key.NewBinding(
+		key.WithKeys("z"),
+		key.WithHelp("z", "zen"),
+	),
 	Quit: key.NewBinding(
 		key.WithKeys("q", "ctrl+c"),
 		key.WithHelp("q", "quit"),
@@ -65,6 +70,6 @@ var keys = keyMap{
 
 func (k keyMap) helpView() string {
 	return styleHelp.Render(
-		"j/k Move · Enter Open · / Search · a Refs · q Quit",
+		"j/k Move · Enter Open · / Search · a Refs · z Zen · q Quit",
 	)
 }
