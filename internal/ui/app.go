@@ -20,6 +20,7 @@ const diffDebounce = 150 * time.Millisecond
 const fetchInterval = 60 * time.Second
 const fetchTimeout = 30 * time.Second
 const animInterval = 120 * time.Millisecond
+const countdownInterval = 1 * time.Second
 
 type viewMode int
 
@@ -48,12 +49,14 @@ type AppModel struct {
 	err         error
 	debounceSeq int
 
-	fetchSeq      int  // guards the self-rescheduling MsgFetchTick chain
-	fetchInFlight bool // true while a background `git fetch` is running
-	reloadGen     int  // guards stale MsgCommitsLoaded/MsgCommitsBatch from a
+	fetchSeq      int       // guards the self-rescheduling MsgFetchTick chain
+	fetchInFlight bool      // true while a background `git fetch` is running
+	nextFetchAt   time.Time // when the next background fetch is scheduled to run
+	reloadGen     int       // guards stale MsgCommitsLoaded/MsgCommitsBatch from a
 	// reload superseded by a newer one (Toggle vs. background fetch)
 
 	animSeq int // guards the self-rescheduling MsgAnimationTick chain (zen mode)
+	tickSeq int // guards the self-rescheduling MsgCountdownTick chain (footer redraw)
 }
 
 func NewApp(runner *git.Runner) AppModel {
@@ -61,23 +64,37 @@ func NewApp(runner *git.Runner) AppModel {
 	sp.Spinner = spinner.Dot
 
 	return AppModel{
-		runner:   runner,
-		log:      newLogPane(),
-		diff:     newDiffPane(),
-		search:   newSearchModel(),
-		zen:      newZenPane(),
-		spinner:  sp,
-		showAll:  true,
-		repoName: filepath.Base(runner.RepoPath),
+		runner:      runner,
+		log:         newLogPane(),
+		diff:        newDiffPane(),
+		search:      newSearchModel(),
+		zen:         newZenPane(),
+		spinner:     sp,
+		showAll:     true,
+		repoName:    filepath.Base(runner.RepoPath),
+		fetchSeq:    1,
+		nextFetchAt: time.Now().Add(fetchInterval),
+		tickSeq:     1,
 	}
 }
 
+// Init has a value receiver, like Update and View: Bubble Tea only keeps the
+// tea.Cmd it returns, not any mutation made to m, so the initial fetchSeq/
+// tickSeq/nextFetchAt values must already be set by NewApp rather than by
+// calling scheduleFetchTick/scheduleCountdownTick here (those mutate a copy
+// that's discarded). The two tea.Tick calls below mirror what those methods
+// build, using the seq NewApp already baked in.
 func (m AppModel) Init() tea.Cmd {
 	return tea.Batch(
 		m.spinner.Tick,
 		m.loadCommitsCmd(0, m.reloadGen),
 		m.loadBranchCmd(),
-		m.scheduleFetchTick(),
+		tea.Tick(fetchInterval, func(time.Time) tea.Msg {
+			return MsgFetchTick{Seq: m.fetchSeq}
+		}),
+		tea.Tick(countdownInterval, func(time.Time) tea.Msg {
+			return MsgCountdownTick{Seq: m.tickSeq}
+		}),
 	)
 }
 
@@ -86,8 +103,21 @@ func (m AppModel) Init() tea.Cmd {
 func (m *AppModel) scheduleFetchTick() tea.Cmd {
 	m.fetchSeq++
 	seq := m.fetchSeq
+	m.nextFetchAt = time.Now().Add(fetchInterval)
 	return tea.Tick(fetchInterval, func(time.Time) tea.Msg {
 		return MsgFetchTick{Seq: seq}
+	})
+}
+
+// scheduleCountdownTick bumps the countdown sequence and returns a tea.Cmd
+// that, after countdownInterval has elapsed, forces a footer redraw so the
+// "next fetch in Ns" countdown stays current. It reschedules itself for the
+// lifetime of the app.
+func (m *AppModel) scheduleCountdownTick() tea.Cmd {
+	m.tickSeq++
+	seq := m.tickSeq
+	return tea.Tick(countdownInterval, func(time.Time) tea.Msg {
+		return MsgCountdownTick{Seq: seq}
 	})
 }
 
@@ -242,6 +272,11 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.loading = false
 		}
 
+	case MsgCountdownTick:
+		if msg.Seq == m.tickSeq {
+			cmds = append(cmds, m.scheduleCountdownTick())
+		}
+
 	case MsgFetchTick:
 		if msg.Seq == m.fetchSeq {
 			cmds = append(cmds, m.scheduleFetchTick())
@@ -390,6 +425,7 @@ func (m AppModel) updateSearch(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 const (
 	toolbarHeight  = 1
 	footerHeight   = 1
+	fetchBarHeight = 1
 	popupWidthPct  = 80
 	popupHeightPct = 80
 	sideMargin     = 2
@@ -397,11 +433,11 @@ const (
 
 func (m *AppModel) applyLayout() {
 	contentWidth := max(m.width-2*sideMargin, 1)
-	m.log.setSize(contentWidth, m.height-toolbarHeight-footerHeight)
+	m.log.setSize(contentWidth, m.height-toolbarHeight-footerHeight-fetchBarHeight)
 	popupW := m.width * popupWidthPct / 100
 	popupH := m.height * popupHeightPct / 100
 	m.diff.setSize(popupW, popupH)
-	m.zen.setSize(m.width, m.height)
+	m.zen.setSize(m.width, m.height-fetchBarHeight)
 }
 
 var styleMargin = lipgloss.NewStyle().Padding(0, sideMargin)
@@ -416,19 +452,21 @@ func (m AppModel) View() string {
 	}
 
 	if m.mode == modeZen {
-		return m.zen.View()
+		fetchBar := renderFetchBar(m.width, m.fetchInFlight, m.nextFetchAt)
+		return m.zen.View() + "\n" + fetchBar
 	}
 
 	contentWidth := max(m.width-2*sideMargin, 1)
 	toolbar := renderToolbar(contentWidth, m.repoName, m.branch, m.showAll)
 	footer := renderFooter(contentWidth, m.loading, m.spinner.View(), m.loadedCount, m.showAll, m.log.cursor, m.log.visibleCount())
+	fetchBar := renderFetchBar(contentWidth, m.fetchInFlight, m.nextFetchAt)
 
 	if m.mode == modeSearch {
-		content := toolbar + "\n" + m.log.View(true) + "\n" + m.search.View() + "\n" + footer
+		content := toolbar + "\n" + m.log.View(true) + "\n" + m.search.View() + "\n" + footer + "\n" + fetchBar
 		return styleMargin.Render(content)
 	}
 
-	base := styleMargin.Render(toolbar + "\n" + m.log.View(true) + "\n" + footer)
+	base := styleMargin.Render(toolbar + "\n" + m.log.View(true) + "\n" + footer + "\n" + fetchBar)
 
 	if m.popupOpen {
 		return overlayCenter(base, m.diff.View(true), m.width, m.height)

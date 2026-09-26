@@ -100,6 +100,12 @@ var (
 
 	styleFooter = lipgloss.NewStyle()
 
+	styleFetchBarFill = lipgloss.NewStyle().
+				Foreground(colorBorderActive)
+
+	styleFetchBarEmpty = lipgloss.NewStyle().
+				Foreground(colorBorder)
+
 	stylePopup = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(colorBorderActive).

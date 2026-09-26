@@ -49,6 +49,12 @@ type MsgAnimationTick struct {
 	Seq int
 }
 
+// MsgCountdownTick fires every second for the lifetime of the app, purely to
+// force a redraw of the footer's "next fetch in Ns" countdown.
+type MsgCountdownTick struct {
+	Seq int
+}
+
 type MsgError struct {
 	Err error
 }
