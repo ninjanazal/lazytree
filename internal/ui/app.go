@@ -46,7 +46,7 @@ type AppModel struct {
 	showAll     bool
 	repoName    string
 	branch      string
-	err         error
+	banner      statusBanner
 	debounceSeq int
 
 	fetchSeq      int       // guards the self-rescheduling MsgFetchTick chain
@@ -54,6 +54,7 @@ type AppModel struct {
 	nextFetchAt   time.Time // when the next background fetch is scheduled to run
 	reloadGen     int       // guards stale MsgCommitsLoaded/MsgCommitsBatch from a
 	// reload superseded by a newer one (Toggle vs. background fetch)
+	layouter *graphpkg.Layouter // carries lane state across MsgCommitsBatch pages for the current reloadGen
 
 	animSeq int // guards the self-rescheduling MsgAnimationTick chain (zen mode)
 	tickSeq int // guards the self-rescheduling MsgCountdownTick chain (footer redraw)
@@ -170,14 +171,15 @@ func (m AppModel) loadCommitsCmd(offset, gen int) tea.Cmd {
 		ctx := context.Background()
 		commits, err := git.FetchLog(ctx, m.runner, args...)
 		if err != nil {
-			return MsgError{Err: err}
+			return MsgError{Gen: gen, Err: err}
 		}
 		if refsByHash, err := git.BuildRefsByHash(ctx, m.runner); err == nil {
 			git.AttachRefs(commits, refsByHash)
 		}
 		if offset == 0 {
-			layout := graphpkg.Layout(commits)
-			return MsgCommitsLoaded{Commits: commits, Layout: layout, Gen: gen}
+			lt := graphpkg.NewLayouter()
+			layout := lt.Append(commits)
+			return MsgCommitsLoaded{Commits: commits, Layout: layout, Layouter: lt, Gen: gen}
 		}
 		return MsgCommitsBatch{Commits: commits, Offset: offset, Gen: gen}
 	}
@@ -187,10 +189,7 @@ func (m AppModel) loadDiffCmd(hash string) tea.Cmd {
 	return func() tea.Msg {
 		ctx := context.Background()
 		files, err := git.FetchDiff(ctx, m.runner, hash)
-		if err != nil {
-			return MsgError{Err: err}
-		}
-		return MsgDiffLoaded{Hash: hash, Files: files}
+		return MsgDiffLoaded{Hash: hash, Files: files, Err: err}
 	}
 }
 
@@ -247,8 +246,10 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			break // superseded by a newer reload
 		}
 		m.loading = false
+		m.banner.dismiss()
 		m.loadedCount = len(msg.Commits)
 		m.log.setCommits(msg.Commits, msg.Layout)
+		m.layouter = msg.Layouter
 		// Load more if there might be more commits.
 		if len(msg.Commits) == pageSize {
 			m.loading = true
@@ -263,7 +264,13 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			break
 		}
 		all := append(m.log.commits, msg.Commits...)
-		layout := graphpkg.Layout(all)
+		if m.layouter == nil {
+			// Defensive fallback (e.g. a caller/test built MsgCommitsLoaded
+			// without a Layouter) — rebuild lane state from what's loaded so far.
+			m.layouter = graphpkg.NewLayouter()
+			m.layouter.Append(m.log.commits)
+		}
+		layout := m.layouter.Append(msg.Commits)
 		m.log.setCommits(all, layout)
 		m.loadedCount = len(all)
 		if len(msg.Commits) == pageSize {
@@ -302,12 +309,24 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case MsgDiffLoaded:
+		// A failed diff load is shown inside the diff pane itself (local to
+		// the commit being viewed), not the app-wide banner: see "Done when"
+		// in the M1 roadmap entry -- a bad diff must not kill the app.
 		if c := m.log.selectedCommit(); c != nil && c.Hash == msg.Hash {
-			m.diff.setDiff(msg.Hash, msg.Files)
+			if msg.Err != nil {
+				m.diff.setError(msg.Hash, msg.Err)
+			} else {
+				m.diff.setDiff(msg.Hash, msg.Files)
+			}
 		}
 
 	case MsgError:
-		m.err = msg.Err
+		if msg.Gen != m.reloadGen {
+			break // superseded by a newer reload; that one's outcome wins
+		}
+		// Non-fatal: shown as a dismissible banner while the rest of the UI
+		// stays interactive.
+		m.banner.set(msg.Err)
 		m.loading = false
 
 	case MsgBranchInfo:
@@ -323,17 +342,30 @@ func (m AppModel) updateKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 
 	case key.Matches(msg, keys.Back):
+		m.banner.dismiss()
 		m.popupOpen = false
 		if m.mode == modeZen {
 			m.mode = modeLog
+			// applyLayout, matching zen-entry below: nothing that affects
+			// the log pane's height formula currently changes while zen is
+			// active, which is why this has been a harmless no-op so far,
+			// but that's an easy invariant for a future change (e.g. a
+			// banner that only reserves a row when it has something to
+			// show) to break silently. Calling it here removes the need to
+			// rely on that at all.
+			m.applyLayout()
 		}
 
 	case key.Matches(msg, keys.Zen):
 		if m.mode == modeZen {
 			m.mode = modeLog
+			m.applyLayout()
 			return m, nil
 		}
-		m.zen.setSize(m.width, m.height)
+		// applyLayout, not a bare setSize, so zen's height stays in sync
+		// with the fetch bar and error banner it's drawn above (previously
+		// this used m.height directly, which drew 2 rows too tall).
+		m.applyLayout()
 		m.zen.rebuild(m.repoName, m.log.commits, m.log.layout)
 		m.mode = modeZen
 		return m, m.scheduleAnimTick()
@@ -347,11 +379,13 @@ func (m AppModel) updateKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keys.Search):
 		m.mode = modeSearch
 		m.search.Focus()
+		m.applyLayout() // the log pane must shrink to make room for the search box
 
 	case key.Matches(msg, keys.Toggle):
 		m.showAll = !m.showAll
 		m.loading = true
 		m.log.setCommits(nil, model.GraphLayout{})
+		m.layouter = nil
 		m.reloadGen++
 		return m, m.loadCommitsCmd(0, m.reloadGen)
 
@@ -410,11 +444,13 @@ func (m AppModel) updateSearch(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.log.applyFilter(query)
 		m.search.Blur()
 		m.mode = modeLog
+		m.applyLayout() // give the log pane back the rows the search box used
 	case "esc":
 		m.search.Clear()
 		m.log.applyFilter("")
 		m.search.Blur()
 		m.mode = modeLog
+		m.applyLayout()
 	default:
 		cmd := m.search.Update(msg)
 		return m, cmd
@@ -426,6 +462,8 @@ const (
 	toolbarHeight  = 1
 	footerHeight   = 1
 	fetchBarHeight = 1
+	bannerHeight   = 1 // statusBanner's fixed row count; read via m.banner.Height()
+	searchHeight   = 3 // search.View()'s bordered box: top border + input line + bottom border
 	popupWidthPct  = 80
 	popupHeightPct = 80
 	sideMargin     = 2
@@ -433,40 +471,44 @@ const (
 
 func (m *AppModel) applyLayout() {
 	contentWidth := max(m.width-2*sideMargin, 1)
-	m.log.setSize(contentWidth, m.height-toolbarHeight-footerHeight-fetchBarHeight)
+	logHeight := m.height - toolbarHeight - footerHeight - fetchBarHeight - m.banner.Height()
+	if m.mode == modeSearch {
+		// The search box is inserted between the log pane and the footer
+		// (see View()'s modeSearch branch) without shrinking the terminal,
+		// so the log pane must give up those rows or the view overflows.
+		logHeight -= searchHeight
+	}
+	m.log.setSize(contentWidth, logHeight)
 	popupW := m.width * popupWidthPct / 100
 	popupH := m.height * popupHeightPct / 100
 	m.diff.setSize(popupW, popupH)
-	m.zen.setSize(m.width, m.height-fetchBarHeight)
+	m.zen.setSize(m.width, m.height-fetchBarHeight-m.banner.Height())
 }
 
 var styleMargin = lipgloss.NewStyle().Padding(0, sideMargin)
 
 func (m AppModel) View() string {
-	if m.err != nil {
-		return styleError.Render(fmt.Sprintf("Error: %v", m.err))
-	}
-
 	if m.width == 0 {
 		return ""
 	}
 
 	if m.mode == modeZen {
 		fetchBar := renderFetchBar(m.width, m.fetchInFlight, m.nextFetchAt)
-		return m.zen.View() + "\n" + fetchBar
+		return m.zen.View() + "\n" + fetchBar + "\n" + m.banner.View(m.width)
 	}
 
 	contentWidth := max(m.width-2*sideMargin, 1)
 	toolbar := renderToolbar(contentWidth, m.repoName, m.branch, m.showAll)
 	footer := renderFooter(contentWidth, m.loading, m.spinner.View(), m.loadedCount, m.showAll, m.log.cursor, m.log.visibleCount())
 	fetchBar := renderFetchBar(contentWidth, m.fetchInFlight, m.nextFetchAt)
+	banner := m.banner.View(contentWidth)
 
 	if m.mode == modeSearch {
-		content := toolbar + "\n" + m.log.View(true) + "\n" + m.search.View() + "\n" + footer + "\n" + fetchBar
+		content := toolbar + "\n" + m.log.View(true) + "\n" + m.search.View() + "\n" + footer + "\n" + fetchBar + "\n" + banner
 		return styleMargin.Render(content)
 	}
 
-	base := styleMargin.Render(toolbar + "\n" + m.log.View(true) + "\n" + footer + "\n" + fetchBar)
+	base := styleMargin.Render(toolbar + "\n" + m.log.View(true) + "\n" + footer + "\n" + fetchBar + "\n" + banner)
 
 	if m.popupOpen {
 		return overlayCenter(base, m.diff.View(true), m.width, m.height)

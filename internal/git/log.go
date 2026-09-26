@@ -20,7 +20,7 @@ func FetchLog(ctx context.Context, r *Runner, extraArgs ...string) ([]model.Comm
 	args = append(args, extraArgs...)
 	raw, err := r.Run(ctx, args...)
 	if err != nil {
-		return nil, fmt.Errorf("git log: %w", err)
+		return nil, err
 	}
 	return ParseLog(raw)
 }

@@ -18,15 +18,15 @@ type Ref struct {
 }
 
 type Commit struct {
-	Hash      string
-	ShortHash string
-	Parents   []string
-	Author    string
-	AuthorEmail string
-	Committer string
+	Hash           string
+	ShortHash      string
+	Parents        []string
+	Author         string
+	AuthorEmail    string
+	Committer      string
 	CommitterEmail string
-	Timestamp time.Time
-	Subject   string
-	Body      string
-	Refs      []Ref
+	Timestamp      time.Time
+	Subject        string
+	Body           string
+	Refs           []Ref
 }

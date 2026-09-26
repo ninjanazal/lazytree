@@ -1,11 +1,15 @@
 package ui
 
-import "github.com/eurico-martins/lazytree/internal/model"
+import (
+	"github.com/eurico-martins/lazytree/internal/graph"
+	"github.com/eurico-martins/lazytree/internal/model"
+)
 
 type MsgCommitsLoaded struct {
-	Commits []model.Commit
-	Layout  model.GraphLayout
-	Gen     int
+	Commits  []model.Commit
+	Layout   model.GraphLayout
+	Layouter *graph.Layouter // lane state to continue with on MsgCommitsBatch; may be nil
+	Gen      int
 }
 
 type MsgCommitsBatch struct {
@@ -28,9 +32,14 @@ type MsgFetchResult struct {
 	Err error
 }
 
+// MsgDiffLoaded reports the result of a diff load, success or failure. A
+// failed diff is not fatal to the app (Err is shown inside the diff pane
+// itself, via diffPane.setError) -- see the M1 roadmap's "Done when: ... a
+// bad diff doesn't kill the app".
 type MsgDiffLoaded struct {
 	Hash  string
 	Files []model.DiffFile
+	Err   error
 }
 
 type MsgDiffDebounce struct {
@@ -55,7 +64,13 @@ type MsgCountdownTick struct {
 	Seq int
 }
 
+// MsgError reports a failed commits load. Gen ties it to the reload that
+// produced it, the same way MsgCommitsLoaded/MsgCommitsBatch are, so a
+// stale error from a superseded reload can't clobber a newer one that's
+// still in flight (e.g. a background fetch triggers a reload, then an
+// earlier load's error arrives after the reload has already started).
 type MsgError struct {
+	Gen int
 	Err error
 }
 

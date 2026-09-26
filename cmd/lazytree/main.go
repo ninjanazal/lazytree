@@ -1,9 +1,10 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
-	"path/filepath"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/eurico-martins/lazytree/internal/git"
@@ -16,7 +17,9 @@ func main() {
 		repoPath = os.Args[1]
 	}
 
-	root, err := findGitRoot(repoPath)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	root, err := git.ResolveRepo(ctx, repoPath)
+	cancel()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "lazytree: %v\n", err)
 		os.Exit(1)
@@ -35,28 +38,4 @@ func main() {
 		fmt.Fprintf(os.Stderr, "lazytree: %v\n", err)
 		os.Exit(1)
 	}
-}
-
-// findGitRoot walks up from dir looking for a .git directory.
-func findGitRoot(dir string) (string, error) {
-	abs, err := filepath.Abs(dir)
-	if err != nil {
-		return "", fmt.Errorf("cannot resolve path %q: %w", dir, err)
-	}
-
-	current := abs
-	for {
-		info, err := os.Stat(filepath.Join(current, ".git"))
-		if err == nil && info.IsDir() {
-			return current, nil
-		}
-
-		parent := filepath.Dir(current)
-		if parent == current {
-			break
-		}
-		current = parent
-	}
-
-	return "", fmt.Errorf("%q is not inside a git repository", abs)
 }

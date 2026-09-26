@@ -290,7 +290,10 @@ func (p *logPane) View(focused bool) string {
 
 	header := renderLogHeader(graphColW, hashColW, messageW, authorColW, dateColW)
 
-	return " " + header + "\n" + sb.String()
+	// Every row above is written with a trailing "\n"; drop the last one so
+	// the pane is exactly header + rows tall. Callers join panes with "\n",
+	// and a trailing newline here would add a phantom blank line.
+	return " " + header + "\n" + strings.TrimSuffix(sb.String(), "\n")
 }
 
 // columnWidths computes the fixed widths for every column, shared by the

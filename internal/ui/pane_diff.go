@@ -11,6 +11,8 @@ import (
 type diffPane struct {
 	files    []model.DiffFile
 	hash     string
+	err      error // set by setError; a failed load is local to this pane
+	loaded   bool  // false until the first setDiff/setError, distinct from "loaded but empty"
 	viewport viewport.Model
 	width    int
 	height   int
@@ -31,7 +33,7 @@ func (p *diffPane) setSize(w, h int) {
 		p.viewport.Width = w - 6
 		p.viewport.Height = h - 6
 	}
-	if p.files != nil {
+	if p.loaded {
 		p.viewport.SetContent(p.renderContent())
 	}
 }
@@ -39,6 +41,23 @@ func (p *diffPane) setSize(w, h int) {
 func (p *diffPane) setDiff(hash string, files []model.DiffFile) {
 	p.hash = hash
 	p.files = files
+	p.err = nil
+	p.loaded = true
+	if p.ready {
+		p.viewport.SetContent(p.renderContent())
+		p.viewport.GotoTop()
+	}
+}
+
+// setError records a failed diff load for hash. The pane shows the error
+// in place of content, rather than leaving a previous commit's stale diff
+// on screen -- see the M1 roadmap's "Done when: ... a bad diff doesn't kill
+// the app" (a failed diff load is local to this pane, not the whole app).
+func (p *diffPane) setError(hash string, err error) {
+	p.hash = hash
+	p.files = nil
+	p.err = err
+	p.loaded = true
 	if p.ready {
 		p.viewport.SetContent(p.renderContent())
 		p.viewport.GotoTop()
@@ -46,6 +65,9 @@ func (p *diffPane) setDiff(hash string, files []model.DiffFile) {
 }
 
 func (p *diffPane) renderContent() string {
+	if p.err != nil {
+		return styleError.Render(fmt.Sprintf("couldn't load diff: %v", p.err))
+	}
 	if len(p.files) == 0 {
 		return styleHelp.Render("No diff available")
 	}
@@ -87,7 +109,7 @@ func (p *diffPane) renderContent() string {
 func (p *diffPane) View(focused bool) string {
 	pane := stylePopup
 
-	if p.files == nil {
+	if !p.loaded {
 		return pane.Width(p.width - 4).Height(p.height - 2).Render(
 			styleHelp.Render("Loading diff…"),
 		)
