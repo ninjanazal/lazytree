@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"maps"
 	"strings"
 	"time"
 
@@ -21,7 +22,31 @@ type logPane struct {
 	showAll     bool
 	filterQuery string
 	filtered    []int // indices into commits matching filter
+
+	// Cached render state, kept current by setCommits/setSize. View() must
+	// never recompute these directly: with tens of thousands of commits,
+	// doing so on every frame (cursor move, spinner tick, 1s countdown)
+	// would dominate render cost. Both setters run against the pointer
+	// AppModel.Update holds, so the cache persists across frames; View has
+	// a value receiver and any writes made from inside it would be
+	// discarded when the frame returns.
+	//
+	// setCommits always rebuilds from scratch; appendCommits (used for each
+	// page of the paginated load) renders only the new commits so loading
+	// stays O(n) overall. cachedActiveLanes carries RenderCommitLine's lane
+	// state entering the last row, so an append can resume from there.
+	cachedGraphLines  []string
+	cachedActiveLanes map[int]bool
+	cachedGraphColW   int
+	cachedHashColW    int
+	cachedAuthorColW  int
+	cachedMessageW    int
 }
+
+// dateColW is fixed at the widest relativeTime label ("just now",
+// "11mo ago") because those labels change with wall-clock time; a width
+// measured once and cached could later be too narrow.
+const dateColW = 8
 
 // minGraphColW reserves room for several lanes worth of glyphs so the graph
 // column reads as a wide, explicit lane even for currently-linear history.
@@ -36,11 +61,30 @@ func newLogPane() logPane {
 }
 
 func (p *logPane) setSize(w, h int) {
+	widthChanged := w != p.width
 	p.width = w
 	p.height = h
+	if widthChanged {
+		// Only messageW depends on pane width; the graph/hash/author/date
+		// widths are independent of it, so there's no need to touch the
+		// (potentially expensive) graph-line render on a resize.
+		p.recomputeMessageW()
+	}
 }
 
+// setCommits replaces the commit list and rebuilds the render cache.
 func (p *logPane) setCommits(commits []model.Commit, layout model.GraphLayout) {
+	p.updateCommits(commits, layout, 0)
+}
+
+// appendCommits adds the next page of the same history. layout must be the
+// cumulative layout from the same Layouter that produced the existing rows.
+func (p *logPane) appendCommits(newCommits []model.Commit, layout model.GraphLayout) {
+	from := len(p.commits)
+	p.updateCommits(append(p.commits, newCommits...), layout, from)
+}
+
+func (p *logPane) updateCommits(commits []model.Commit, layout model.GraphLayout, from int) {
 	var prevHash string
 	if c := p.selectedCommit(); c != nil {
 		prevHash = c.Hash
@@ -50,6 +94,7 @@ func (p *logPane) setCommits(commits []model.Commit, layout model.GraphLayout) {
 	p.commits = commits
 	p.layout = layout
 	p.filtered = nil
+	p.extendCache(from)
 
 	if prevHash != "" {
 		if idx := indexOfHash(commits, prevHash); idx >= 0 {
@@ -163,21 +208,60 @@ func (p *logPane) visibleIndex(cursor int) int {
 	return cursor
 }
 
-// graphLines renders the full, unfiltered graph for every commit in order,
-// indexed by commit index. Filtering only hides which rows' text gets
-// displayed (see View); the graph itself is always walked in full so
-// activeLanes bookkeeping and diagonals stay correct regardless of filter.
-func (p *logPane) graphLines() []string {
-	lines := make([]string, len(p.layout.Nodes))
-	activeLanes := make(map[int]bool)
-	for i, node := range p.layout.Nodes {
-		var next *model.GraphNode
-		if i+1 < len(p.layout.Nodes) {
-			next = &p.layout.Nodes[i+1]
-		}
-		lines[i] = graph.RenderCommitLine(node, next, activeLanes, p.layout.Width)
+// extendCache renders rows from index `from` onward and folds them into the
+// cached column widths. from == 0 is a full rebuild; from > 0 continues an
+// append, redoing row from-1 because it was rendered as the last row (next
+// == nil) and may now need a diagonal connector to its new successor.
+func (p *logPane) extendCache(from int) {
+	nodes := p.layout.Nodes
+	if from <= 0 || from > len(p.cachedGraphLines) {
+		from = 0
+		p.cachedGraphLines = nil
+		p.cachedActiveLanes = nil
+		p.cachedGraphColW, p.cachedHashColW, p.cachedAuthorColW = 0, 0, 0
 	}
-	return lines
+
+	startLines := max(from-1, 0)
+	p.cachedGraphLines = p.cachedGraphLines[:startLines]
+
+	activeLanes := make(map[int]bool, len(p.cachedActiveLanes))
+	if startLines > 0 {
+		maps.Copy(activeLanes, p.cachedActiveLanes)
+	}
+	for i := startLines; i < len(nodes); i++ {
+		var next *model.GraphNode
+		if i+1 < len(nodes) {
+			next = &nodes[i+1]
+		}
+		if i == len(nodes)-1 {
+			p.cachedActiveLanes = maps.Clone(activeLanes)
+		}
+		line := graph.RenderCommitLine(nodes[i], next, activeLanes, p.layout.Width)
+		p.cachedGraphLines = append(p.cachedGraphLines, line)
+
+		row, conn, _ := strings.Cut(line, "\n")
+		p.cachedGraphColW = max(p.cachedGraphColW, lipgloss.Width(row), lipgloss.Width(conn))
+	}
+	// Reserve room for a few lanes even when history is currently linear, so
+	// the graph column reads as a proper wide lane rather than a thin sliver
+	// that only widens once a branch/merge appears.
+	p.cachedGraphColW = max(p.cachedGraphColW, minGraphColW)
+
+	for _, c := range p.commits[from:] {
+		p.cachedHashColW = max(p.cachedHashColW, lipgloss.Width(c.ShortHash))
+		p.cachedAuthorColW = max(p.cachedAuthorColW, lipgloss.Width(truncate(c.Author, 16)))
+	}
+
+	p.recomputeMessageW()
+}
+
+// recomputeMessageW derives the flexible message-column width from the
+// other (independent of pane width) cached column widths. Split out from
+// extendCache so a pane resize can refresh it without re-rendering the
+// graph.
+func (p *logPane) recomputeMessageW() {
+	fixed := p.cachedGraphColW + 2 + p.cachedHashColW + 2 + p.cachedAuthorColW + len(authorGap) + dateColW + len(authorGap)
+	p.cachedMessageW = max(p.width-2-fixed, 10)
 }
 
 func (p *logPane) nearBottom() bool {
@@ -195,15 +279,10 @@ func (p *logPane) View(focused bool) string {
 
 	// Graph rendering always walks the full commit list in order (not just
 	// the visible window) so activeLanes bookkeeping and diagonals stay
-	// correct even when a filter hides some rows' text.
-	graphLines := p.graphLines()
-
-	// Fixed column widths (computed over all commits, not just the visible
-	// window) so columns don't reflow between scrolls and stay aligned with
-	// the header row above them. messageW is a flexible column padded/
-	// truncated to a fixed width so author/date always start at the same
-	// horizontal offset regardless of message length.
-	graphColW, hashColW, messageW, authorColW, dateColW := p.columnWidths(graphLines)
+	// correct even when a filter hides some rows' text. Read the cache
+	// built by setCommits/setSize rather than recomputing here.
+	graphLines := p.cachedGraphLines
+	graphColW, hashColW, messageW, authorColW := p.cachedGraphColW, p.cachedHashColW, p.cachedMessageW, p.cachedAuthorColW
 
 	lineBudget := visible
 	for idx := p.offset; idx < count && lineBudget > 0; idx++ {
@@ -294,32 +373,6 @@ func (p *logPane) View(focused bool) string {
 	// the pane is exactly header + rows tall. Callers join panes with "\n",
 	// and a trailing newline here would add a phantom blank line.
 	return " " + header + "\n" + strings.TrimSuffix(sb.String(), "\n")
-}
-
-// columnWidths computes the fixed widths for every column, shared by the
-// header and every data row so they can never drift apart. graphColW,
-// hashColW, authorColW, and dateColW are maxima over all commits (not just
-// the visible window) so columns stay stable while scrolling; messageW is
-// whatever horizontal space remains, used to pad/truncate the message
-// column to a fixed width so author/date always start at the same offset.
-func (p *logPane) columnWidths(graphLines []string) (graphColW, hashColW, messageW, authorColW, dateColW int) {
-	for _, c := range p.commits {
-		hashColW = max(hashColW, lipgloss.Width(c.ShortHash))
-		dateColW = max(dateColW, lipgloss.Width(relativeTime(c.Timestamp)))
-		authorColW = max(authorColW, lipgloss.Width(truncate(c.Author, 16)))
-	}
-	for _, gl := range graphLines {
-		row, conn, _ := strings.Cut(gl, "\n")
-		graphColW = max(graphColW, lipgloss.Width(row), lipgloss.Width(conn))
-	}
-	// Reserve room for a few lanes even when history is currently linear, so
-	// the graph column reads as a proper wide lane rather than a thin sliver
-	// that only widens once a branch/merge appears.
-	graphColW = max(graphColW, minGraphColW)
-
-	fixed := graphColW + 2 + hashColW + 2 + authorColW + len(authorGap) + dateColW + len(authorGap)
-	messageW = max(p.width-2-fixed, 10)
-	return
 }
 
 // renderLogHeader builds the column-label header row, aligned to the same

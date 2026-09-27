@@ -54,3 +54,33 @@ func TestClassifyRef(t *testing.T) {
 		})
 	}
 }
+
+func TestRefsFingerprint(t *testing.T) {
+	a := map[string][]model.Ref{
+		"hash1": {{Name: "main", Kind: model.RefLocalBranch}},
+		"hash2": {{Name: "origin/main", Kind: model.RefRemoteBranch}},
+	}
+	// Same content, different map (and thus potentially different
+	// iteration order) — the fingerprint must still match.
+	b := map[string][]model.Ref{
+		"hash2": {{Name: "origin/main", Kind: model.RefRemoteBranch}},
+		"hash1": {{Name: "main", Kind: model.RefLocalBranch}},
+	}
+	if RefsFingerprint(a) != RefsFingerprint(b) {
+		t.Errorf("expected equal-content maps to produce the same fingerprint")
+	}
+
+	// Moving a branch to a new hash must change the fingerprint, so a
+	// fetch that fast-forwards a ref is detected.
+	moved := map[string][]model.Ref{
+		"hash3": {{Name: "main", Kind: model.RefLocalBranch}},
+		"hash2": {{Name: "origin/main", Kind: model.RefRemoteBranch}},
+	}
+	if RefsFingerprint(a) == RefsFingerprint(moved) {
+		t.Errorf("expected a moved ref to change the fingerprint")
+	}
+
+	if RefsFingerprint(nil) != RefsFingerprint(map[string][]model.Ref{}) {
+		t.Errorf("expected nil and empty maps to produce the same fingerprint")
+	}
+}

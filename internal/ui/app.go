@@ -2,7 +2,6 @@ package ui
 
 import (
 	"context"
-	"fmt"
 	"path/filepath"
 	"time"
 
@@ -56,6 +55,22 @@ type AppModel struct {
 	// reload superseded by a newer one (Toggle vs. background fetch)
 	layouter *graphpkg.Layouter // carries lane state across MsgCommitsBatch pages for the current reloadGen
 
+	// refsByHash/refsFingerprint are fetched once per reloadGen (at offset
+	// 0) rather than once per page: refs can't change mid-load, so paging
+	// through a large repo would otherwise repeat the same for-each-ref
+	// work for every page. refsFingerprint lets fetchCmd cheaply detect
+	// whether a background `git fetch` actually moved any ref before
+	// paying for a full reload.
+	refsByHash      map[string][]model.Ref
+	refsFingerprint string
+
+	// logStream is the open `git log` process for the current reloadGen,
+	// read incrementally by nextPageCmd; nil once fully read. A generation
+	// that's superseded while this is still open (Toggle, a fetch-changed
+	// reload) must close it via closeLogStreamCmd before starting the next
+	// one, or the abandoned `git log` process leaks.
+	logStream *git.LogStream
+
 	animSeq int // guards the self-rescheduling MsgAnimationTick chain (zen mode)
 	tickSeq int // guards the self-rescheduling MsgCountdownTick chain (footer redraw)
 }
@@ -88,7 +103,7 @@ func NewApp(runner *git.Runner) AppModel {
 func (m AppModel) Init() tea.Cmd {
 	return tea.Batch(
 		m.spinner.Tick,
-		m.loadCommitsCmd(0, m.reloadGen),
+		m.startReloadCmd(m.reloadGen, nil),
 		m.loadBranchCmd(),
 		tea.Tick(fetchInterval, func(time.Time) tea.Msg {
 			return MsgFetchTick{Seq: m.fetchSeq}
@@ -134,14 +149,31 @@ func (m *AppModel) scheduleAnimTick() tea.Cmd {
 	})
 }
 
-// fetchCmd runs `git fetch` in the background. Errors are reported via
-// MsgFetchResult but are otherwise swallowed by the caller (live fetch is
-// silent on failure).
+// fetchCmd runs `git fetch` in the background, then checks whether it moved
+// any ref (branch/tag/remote-tracking hash) compared to m.refsFingerprint.
+// Errors are reported via MsgFetchResult but are otherwise swallowed by the
+// caller (live fetch is silent on failure). If the post-fetch ref check
+// itself fails, Changed is reported true so a real change can never be
+// silently dropped.
 func (m AppModel) fetchCmd() tea.Cmd {
+	before := m.refsFingerprint
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), fetchTimeout)
 		defer cancel()
-		return MsgFetchResult{Err: git.Fetch(ctx, m.runner)}
+		if err := git.Fetch(ctx, m.runner); err != nil {
+			return MsgFetchResult{Err: err}
+		}
+		refsByHash, err := git.BuildRefsByHash(ctx, m.runner)
+		if err != nil {
+			return MsgFetchResult{Changed: true}
+		}
+		if git.RefsFingerprint(refsByHash) == before {
+			return MsgFetchResult{Changed: false}
+		}
+		// Pass the refs already fetched for this check through to the
+		// reload it triggers, so loadCommitsCmd doesn't pay for a second
+		// BuildRefsByHash call for the same generation.
+		return MsgFetchResult{Changed: true, RefsByHash: refsByHash}
 	}
 }
 
@@ -156,32 +188,82 @@ func (m AppModel) loadBranchCmd() tea.Cmd {
 }
 
 // logArgs builds the git log args for the current showAll setting: --all
-// includes every ref, otherwise git log defaults to the current branch (HEAD).
-func (m AppModel) logArgs(offset int) []string {
-	args := []string{fmt.Sprintf("--skip=%d", offset), fmt.Sprintf("--max-count=%d", pageSize)}
+// includes every ref, otherwise git log defaults to the current branch
+// (HEAD). No --skip/--max-count: the whole log streams through LogStream,
+// paged client-side by startReloadCmd/nextPageCmd's Next(pageSize) calls.
+func (m AppModel) logArgs() []string {
 	if m.showAll {
-		args = append([]string{"--all"}, args...)
+		return []string{"--all"}
 	}
-	return args
+	return nil
 }
 
-func (m AppModel) loadCommitsCmd(offset, gen int) tea.Cmd {
-	args := m.logArgs(offset)
+// startReloadCmd begins a new generation: starts a fresh LogStream and
+// reads its first page. Refs are fetched once here too, reusing knownRefs
+// when the caller already has them (the MsgFetchResult changed-reload
+// path, which fetched fresh refs while checking whether anything changed).
+func (m AppModel) startReloadCmd(gen int, knownRefs map[string][]model.Ref) tea.Cmd {
+	args := m.logArgs()
 	return func() tea.Msg {
 		ctx := context.Background()
-		commits, err := git.FetchLog(ctx, m.runner, args...)
+		stream, err := git.StartLogStream(ctx, m.runner, args...)
 		if err != nil {
 			return MsgError{Gen: gen, Err: err}
 		}
-		if refsByHash, err := git.BuildRefsByHash(ctx, m.runner); err == nil {
+		commits, done, err := stream.Next(pageSize)
+		if err != nil {
+			return MsgError{Gen: gen, Err: err}
+		}
+
+		refsByHash := knownRefs
+		if refsByHash == nil {
+			if r, err := git.BuildRefsByHash(ctx, m.runner); err == nil {
+				refsByHash = r
+			}
+			// On failure, refsByHash stays nil: fail safe, don't attach a
+			// stale prior-generation map to a new generation's commits.
+		}
+		if refsByHash != nil {
 			git.AttachRefs(commits, refsByHash)
 		}
-		if offset == 0 {
-			lt := graphpkg.NewLayouter()
-			layout := lt.Append(commits)
-			return MsgCommitsLoaded{Commits: commits, Layout: layout, Layouter: lt, Gen: gen}
+
+		lt := graphpkg.NewLayouter()
+		layout := lt.Append(commits)
+		var openStream *git.LogStream
+		if !done {
+			openStream = stream
 		}
-		return MsgCommitsBatch{Commits: commits, Offset: offset, Gen: gen}
+		return MsgCommitsLoaded{
+			Commits: commits, Layout: layout, Layouter: lt, Gen: gen,
+			RefsByHash: refsByHash, Stream: openStream, Done: done,
+		}
+	}
+}
+
+// nextPageCmd reads the next page from an already-open stream (see
+// startReloadCmd), for a generation already in progress.
+func (m AppModel) nextPageCmd(stream *git.LogStream, gen int) tea.Cmd {
+	return func() tea.Msg {
+		commits, done, err := stream.Next(pageSize)
+		if err != nil {
+			return MsgError{Gen: gen, Err: err}
+		}
+		var openStream *git.LogStream
+		if !done {
+			openStream = stream
+		}
+		return MsgCommitsBatch{Commits: commits, Gen: gen, Stream: openStream, Done: done}
+	}
+}
+
+// closeLogStreamCmd abandons an open stream whose generation has been
+// superseded (the --all toggle, or a fetch-changed reload) before it
+// finished reading. Without this, the abandoned `git log` process would
+// keep running indefinitely.
+func closeLogStreamCmd(s *git.LogStream) tea.Cmd {
+	return func() tea.Msg {
+		s.Close()
+		return nil
 	}
 }
 
@@ -245,15 +327,16 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Gen != m.reloadGen {
 			break // superseded by a newer reload
 		}
-		m.loading = false
+		m.loading = !msg.Done
 		m.banner.dismiss()
 		m.loadedCount = len(msg.Commits)
 		m.log.setCommits(msg.Commits, msg.Layout)
 		m.layouter = msg.Layouter
-		// Load more if there might be more commits.
-		if len(msg.Commits) == pageSize {
-			m.loading = true
-			cmds = append(cmds, m.loadCommitsCmd(len(msg.Commits), msg.Gen))
+		m.refsByHash = msg.RefsByHash
+		m.refsFingerprint = git.RefsFingerprint(msg.RefsByHash)
+		m.logStream = msg.Stream
+		if !msg.Done {
+			cmds = append(cmds, m.nextPageCmd(msg.Stream, msg.Gen))
 		}
 		if cmd := m.diffCmdIfChanged(); cmd != nil {
 			cmds = append(cmds, cmd)
@@ -263,7 +346,6 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Gen != m.reloadGen {
 			break
 		}
-		all := append(m.log.commits, msg.Commits...)
 		if m.layouter == nil {
 			// Defensive fallback (e.g. a caller/test built MsgCommitsLoaded
 			// without a Layouter) — rebuild lane state from what's loaded so far.
@@ -271,10 +353,11 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.layouter.Append(m.log.commits)
 		}
 		layout := m.layouter.Append(msg.Commits)
-		m.log.setCommits(all, layout)
-		m.loadedCount = len(all)
-		if len(msg.Commits) == pageSize {
-			cmds = append(cmds, m.loadCommitsCmd(len(all), msg.Gen))
+		m.log.appendCommits(msg.Commits, layout)
+		m.loadedCount = len(m.log.commits)
+		m.logStream = msg.Stream
+		if !msg.Done {
+			cmds = append(cmds, m.nextPageCmd(msg.Stream, msg.Gen))
 		} else {
 			m.loading = false
 		}
@@ -295,11 +378,16 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case MsgFetchResult:
 		m.fetchInFlight = false
-		if msg.Err == nil {
+		if msg.Err == nil && msg.Changed {
+			if m.logStream != nil {
+				cmds = append(cmds, closeLogStreamCmd(m.logStream))
+				m.logStream = nil
+			}
 			m.reloadGen++
-			cmds = append(cmds, m.loadCommitsCmd(0, m.reloadGen))
+			cmds = append(cmds, m.startReloadCmd(m.reloadGen, msg.RefsByHash))
 		}
-		// On error: swallow silently, the next tick retries.
+		// On error, or a fetch that moved nothing: swallow silently, the
+		// next tick retries/rechecks.
 
 	case MsgDiffDebounce:
 		if msg.Seq == m.debounceSeq {
@@ -387,7 +475,13 @@ func (m AppModel) updateKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.log.setCommits(nil, model.GraphLayout{})
 		m.layouter = nil
 		m.reloadGen++
-		return m, m.loadCommitsCmd(0, m.reloadGen)
+		var cmds []tea.Cmd
+		if m.logStream != nil {
+			cmds = append(cmds, closeLogStreamCmd(m.logStream))
+			m.logStream = nil
+		}
+		cmds = append(cmds, m.startReloadCmd(m.reloadGen, nil))
+		return m, tea.Batch(cmds...)
 
 	default:
 		return m.updateLogKeys(msg)

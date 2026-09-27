@@ -1,21 +1,29 @@
 package ui
 
 import (
+	"github.com/eurico-martins/lazytree/internal/git"
 	"github.com/eurico-martins/lazytree/internal/graph"
 	"github.com/eurico-martins/lazytree/internal/model"
 )
 
+// Stream carries the open LogStream forward to the next page's command
+// when Done is false; it's nil once the stream is exhausted (LogStream.Next
+// already reaps/closes it internally in that case -- see internal/git/log.go).
 type MsgCommitsLoaded struct {
-	Commits  []model.Commit
-	Layout   model.GraphLayout
-	Layouter *graph.Layouter // lane state to continue with on MsgCommitsBatch; may be nil
-	Gen      int
+	Commits    []model.Commit
+	Layout     model.GraphLayout
+	Layouter   *graph.Layouter // lane state to continue with on MsgCommitsBatch; may be nil
+	Gen        int
+	RefsByHash map[string][]model.Ref // refs fetched once for this generation; reused for later pages
+	Stream     *git.LogStream         // open stream to read the next page from; nil once Done
+	Done       bool                   // true once the stream is fully read (or failed)
 }
 
 type MsgCommitsBatch struct {
 	Commits []model.Commit
-	Offset  int
 	Gen     int
+	Stream  *git.LogStream
+	Done    bool
 }
 
 // MsgFetchTick fires every fetchInterval while lazytree is open. It kicks
@@ -27,9 +35,17 @@ type MsgFetchTick struct {
 
 // MsgFetchResult reports that a background `git fetch` completed. Fetch
 // failures are silently ignored -- they never populate m.err/MsgError and
-// never surface in the UI; the next scheduled tick simply retries.
+// never surface in the UI; the next scheduled tick simply retries. Changed
+// is only meaningful when Err is nil: it's true when ref state (branch/tag/
+// remote hashes) differs from before the fetch, so the caller can skip a
+// full commit reload when the fetch brought in nothing new. RefsByHash
+// carries the refs already fetched while checking for a change, so the
+// reload MsgFetchResult triggers can reuse them instead of fetching refs a
+// second time; it's only set when Changed is true.
 type MsgFetchResult struct {
-	Err error
+	Err        error
+	Changed    bool
+	RefsByHash map[string][]model.Ref
 }
 
 // MsgDiffLoaded reports the result of a diff load, success or failure. A

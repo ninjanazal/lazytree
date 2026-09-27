@@ -2,6 +2,8 @@ package git
 
 import (
 	"context"
+	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/eurico-martins/lazytree/internal/model"
@@ -120,6 +122,22 @@ func BuildRefsByHash(ctx context.Context, r *Runner) (map[string][]model.Ref, er
 	parseLines(raw)
 	parseLines(rawDeref)
 	return result, nil
+}
+
+// RefsFingerprint returns a deterministic string summarizing a refsByHash
+// map (as built by BuildRefsByHash), suitable for cheaply detecting whether
+// ref state changed (e.g. after a background `git fetch`) without diffing
+// the maps directly or re-walking commit history. Map iteration order is
+// randomized in Go, so the lines are sorted before joining.
+func RefsFingerprint(refsByHash map[string][]model.Ref) string {
+	lines := make([]string, 0, len(refsByHash))
+	for hash, refs := range refsByHash {
+		for _, r := range refs {
+			lines = append(lines, fmt.Sprintf("%s %d %s", hash, r.Kind, r.Name))
+		}
+	}
+	sort.Strings(lines)
+	return strings.Join(lines, "\n")
 }
 
 // CurrentBranch returns the current branch name, or "" if HEAD is detached.

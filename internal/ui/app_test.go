@@ -280,7 +280,7 @@ func TestCommitsBatch_ReloadGenDropsStaleLayouter(t *testing.T) {
 	updated, _ := m.Update(MsgCommitsLoaded{Commits: page0, Layout: layout1, Layouter: lt1, Gen: gen1})
 	m = updated.(AppModel)
 
-	updated, _ = m.Update(MsgCommitsBatch{Commits: page1, Offset: 1, Gen: gen1})
+	updated, _ = m.Update(MsgCommitsBatch{Commits: page1, Gen: gen1})
 	m = updated.(AppModel)
 	if len(m.log.commits) != 2 {
 		t.Fatalf("expected 2 commits loaded, got %d", len(m.log.commits))
@@ -292,7 +292,7 @@ func TestCommitsBatch_ReloadGenDropsStaleLayouter(t *testing.T) {
 
 	// A stale batch from gen1, still in flight, must be dropped.
 	stalePage := []model.Commit{{Hash: "stale", Parents: nil}}
-	updated, _ = m.Update(MsgCommitsBatch{Commits: stalePage, Offset: 2, Gen: gen1})
+	updated, _ = m.Update(MsgCommitsBatch{Commits: stalePage, Gen: gen1})
 	m = updated.(AppModel)
 	if len(m.log.commits) != 2 {
 		t.Fatalf("stale batch was applied: now have %d commits", len(m.log.commits))
@@ -306,7 +306,7 @@ func TestCommitsBatch_ReloadGenDropsStaleLayouter(t *testing.T) {
 	updated, _ = m.Update(MsgCommitsLoaded{Commits: gen2Page0, Layout: layout2, Layouter: lt2, Gen: gen2})
 	m = updated.(AppModel)
 
-	updated, _ = m.Update(MsgCommitsBatch{Commits: gen2Page1, Offset: 1, Gen: gen2})
+	updated, _ = m.Update(MsgCommitsBatch{Commits: gen2Page1, Gen: gen2})
 	m = updated.(AppModel)
 
 	wantAll := append(append([]model.Commit{}, gen2Page0...), gen2Page1...)
@@ -341,7 +341,7 @@ func TestCommitsBatch_NilLayouterFallback(t *testing.T) {
 	}
 
 	more := []model.Commit{{Hash: "z", Parents: nil}}
-	updated, _ := m.Update(MsgCommitsBatch{Commits: more, Offset: len(m.log.commits), Gen: m.reloadGen})
+	updated, _ := m.Update(MsgCommitsBatch{Commits: more, Gen: m.reloadGen})
 	m = updated.(AppModel)
 
 	want := graph.Layout(append(append([]model.Commit{}, branchCommits()...), more...))
