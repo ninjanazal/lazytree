@@ -119,8 +119,11 @@ func TestResolveRepo_Submodule(t *testing.T) {
 	inner := filepath.Join(tmp, "inner")
 	initRepo(t, inner)
 
+	// The submodule path is given relative to the superproject: git rejects
+	// an absolute path that traverses a symlink, and on macOS the temp dir
+	// (/var/folders/...) is one (/var -> /private/var).
 	subPath := filepath.Join(outer, "sub")
-	runGit(t, outer, "-c", "protocol.file.allow=always", "submodule", "add", inner, subPath)
+	runGit(t, outer, "-c", "protocol.file.allow=always", "submodule", "add", inner, "sub")
 
 	got, err := resolve(t, subPath)
 	if err != nil {
