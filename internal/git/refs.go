@@ -9,39 +9,6 @@ import (
 	"github.com/eurico-martins/lazytree/internal/model"
 )
 
-// FetchRefs returns all refs in the repository.
-func FetchRefs(ctx context.Context, r *Runner) ([]model.Ref, error) {
-	raw, err := r.Run(ctx, "for-each-ref",
-		"--format=%(refname)\t%(objectname)\t%(HEAD)",
-		"refs/heads", "refs/remotes", "refs/tags",
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	headHash, _ := r.Run(ctx, "rev-parse", "HEAD")
-	head := strings.TrimSpace(string(headHash))
-
-	var refs []model.Ref
-	for _, line := range strings.Split(strings.TrimSpace(string(raw)), "\n") {
-		if line == "" {
-			continue
-		}
-		parts := strings.SplitN(line, "\t", 3)
-		if len(parts) < 2 {
-			continue
-		}
-		refname := parts[0]
-		objHash := parts[1]
-		isHead := objHash == head
-
-		ref := classifyRef(refname, isHead)
-		refs = append(refs, ref)
-	}
-
-	return refs, nil
-}
-
 func classifyRef(refname string, isHead bool) model.Ref {
 	switch {
 	case strings.HasPrefix(refname, "refs/heads/"):
@@ -151,20 +118,4 @@ func CurrentBranch(ctx context.Context, r *Runner) (string, error) {
 		return "", nil
 	}
 	return name, nil
-}
-
-// FetchChangedFiles returns the list of files changed in a commit.
-func FetchChangedFiles(ctx context.Context, r *Runner, hash string) ([]string, error) {
-	raw, err := r.Run(ctx, "show", "--name-status", "--format=", hash)
-	if err != nil {
-		return nil, err
-	}
-	var files []string
-	for _, line := range strings.Split(strings.TrimSpace(string(raw)), "\n") {
-		line = strings.TrimSpace(line)
-		if line != "" {
-			files = append(files, line)
-		}
-	}
-	return files, nil
 }

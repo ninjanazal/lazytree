@@ -1,12 +1,15 @@
 package ui
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/eurico-martins/lazytree/internal/graph"
 	"github.com/eurico-martins/lazytree/internal/model"
+	"github.com/muesli/termenv"
 )
 
 func branchCommits() []model.Commit {
@@ -27,30 +30,116 @@ func newTestLogPane() logPane {
 	return p
 }
 
-func TestLogPane_FilterKeepsGraphGlyphs(t *testing.T) {
+func TestLogPane_SearchKeepsAllRowsAndGraphGlyphs(t *testing.T) {
 	p := newTestLogPane()
-	p.applyFilter("root")
-
-	view := p.View(false)
-	if !strings.Contains(view, "root") {
-		t.Fatalf("expected filtered view to contain matching commit, got:\n%s", view)
+	p.setSearch("root")
+	if !p.jumpToMatch(true, true) {
+		t.Fatal("expected a match for 'root'")
 	}
 
-	// Regression: the graph column used to be forced blank ("graphStr = \" \"")
-	// whenever a filter was active. Find the matching row and assert it still
-	// carries a non-blank graph glyph.
+	view := p.View(false)
+	for _, subj := range []string{"merge feature", "feature work", "main work", "root"} {
+		if !strings.Contains(view, subj) {
+			t.Errorf("search must not hide rows; %q missing from:\n%s", subj, view)
+		}
+	}
+	// The matching row keeps its graph glyph and carries the match marker.
 	var matchLine string
 	for line := range strings.SplitSeq(view, "\n") {
-		if strings.Contains(line, "root") && !strings.Contains(line, "filter:") {
+		if strings.Contains(line, "root") {
 			matchLine = line
 			break
 		}
 	}
-	if matchLine == "" {
-		t.Fatalf("could not find matching row in view:\n%s", view)
+	if !strings.Contains(matchLine, "▌") || !strings.Contains(matchLine, "o") {
+		t.Errorf("matching row should have the marker and a graph glyph, got %q", matchLine)
 	}
-	if !strings.Contains(matchLine, "o") {
-		t.Errorf("expected matching row to still show a commit-dot graph glyph, got: %q", matchLine)
+}
+
+func TestLogPane_SearchJumpAndWrap(t *testing.T) {
+	p := newLogPane()
+	commits := longHistory(10) // subjects "ch000".."ch009"
+	commits[2].Body = "mentions needle here"
+	commits[7].Refs = []model.Ref{{Name: "needle-branch", Kind: model.RefLocalBranch}}
+	p.setSize(80, 20)
+	p.setCommits(commits, graph.Layout(commits))
+
+	p.setSearch("NEEDLE") // case-insensitive; matches body and ref names
+	if p.search.count != 2 {
+		t.Fatalf("expected 2 matches (body + ref), got %d", p.search.count)
+	}
+	steps := []struct {
+		forward bool
+		want    int
+	}{{true, 2}, {true, 7}, {true, 2}, {false, 7}, {false, 2}}
+	for i, st := range steps {
+		if !p.jumpToMatch(st.forward, i == 0) {
+			t.Fatalf("step %d: no match found", i)
+		}
+		if p.cursor != st.want {
+			t.Errorf("step %d: cursor %d, want %d", i, p.cursor, st.want)
+		}
+	}
+	if got := p.searchStatus(); !strings.Contains(got, "1/2") {
+		t.Errorf("status should show position, got %q", got)
+	}
+
+	p.setSearch("zzz")
+	if p.jumpToMatch(true, false) {
+		t.Error("no match expected")
+	}
+	if got := p.searchStatus(); !strings.Contains(got, "no matches") {
+		t.Errorf("status should say no matches, got %q", got)
+	}
+}
+
+func TestLogPane_SearchExtendsOnAppend(t *testing.T) {
+	p := newLogPane()
+	commits := longHistory(10)
+	p.setSize(80, 20)
+	p.setCommits(commits[:5], graph.Layout(commits[:5]))
+	p.setSearch("ch007")
+	if p.search.count != 0 {
+		t.Fatalf("no match expected yet, got %d", p.search.count)
+	}
+	p.appendCommits(commits[5:], graph.Layout(commits))
+	if p.search.count != 1 || !p.search.matches(7) {
+		t.Errorf("match in appended page not found: count=%d", p.search.count)
+	}
+}
+
+func TestHighlightMatches(t *testing.T) {
+	old := lipgloss.ColorProfile()
+	lipgloss.SetColorProfile(termenv.ANSI256)
+	defer lipgloss.SetColorProfile(old)
+
+	got := highlightMatches("Fix the Fix", "fix", lipgloss.NewStyle())
+	if strings.Count(got, "\x1b[") < 4 || ansi.Strip(got) != "Fix the Fix" {
+		t.Errorf("unexpected highlight output %q", got)
+	}
+	if got := highlightMatches("plain", "", lipgloss.NewStyle()); got != "plain" {
+		t.Errorf("empty query must not alter text, got %q", got)
+	}
+}
+
+func TestKeyMapHelpIsComplete(t *testing.T) {
+	seen := map[string]bool{}
+	for _, g := range keys.helpGroups() {
+		for _, b := range g.bindings {
+			h := b.Help()
+			if h.Key == "" || h.Desc == "" {
+				t.Errorf("binding in %q has no help text: %+v", g.title, b)
+			}
+			seen[h.Key] = true
+		}
+	}
+	for _, want := range []string{"?", "n", "N", "/"} {
+		if !seen[want] {
+			t.Errorf("help overlay is missing %q", want)
+		}
+	}
+	if out := renderHelpOverlay(); !strings.Contains(out, "next match") {
+		t.Errorf("overlay should list bindings, got %q", out)
 	}
 }
 
@@ -171,5 +260,161 @@ func TestLogPane_ScrollWithConnectors(t *testing.T) {
 	view := p.View(false)
 	if view == "" {
 		t.Errorf("expected non-empty view")
+	}
+}
+
+// TestLogPane_CursorStaysVisible walks the cursor through the whole list
+// (and back) and checks the selected commit is always inside the rendered
+// window, and the view never exceeds the pane height. Connector rows make
+// some commits two lines tall, so scrolling must count lines, not commits.
+func TestLogPane_CursorStaysVisible(t *testing.T) {
+	check := func(p *logPane, step string) {
+		t.Helper()
+		view := p.View(false)
+		if h := strings.Count(view, "\n") + 1; h > p.height {
+			t.Fatalf("%s: view is %d lines, pane height %d", step, h, p.height)
+		}
+		if c := p.selectedCommit(); c == nil || !strings.Contains(view, c.ShortHash) {
+			t.Fatalf("%s: selected commit (cursor %d, offset %d) not visible in view:\n%s", step, p.cursor, p.offset, view)
+		}
+	}
+	for _, h := range []int{4, 6, 9} {
+		p := newLogPane()
+		commits := longHistory(40)
+		p.setSize(80, h)
+		p.setCommits(commits, graph.Layout(commits))
+		check(&p, "initial")
+		for range len(p.commits) {
+			p.moveDown()
+			check(&p, "down")
+		}
+		p.pageUp()
+		check(&p, "pageUp")
+		for range len(p.commits) {
+			p.moveUp()
+			check(&p, "up")
+		}
+		p.moveBottom()
+		check(&p, "bottom")
+		p.pageUp()
+		check(&p, "pageUp2")
+		p.pageDown()
+		check(&p, "pageDown")
+		p.moveTop()
+		check(&p, "top")
+	}
+}
+
+// longHistory builds n commits (newest first) where every third commit is a
+// merge with a side-branch parent, so the graph has many connector rows.
+func longHistory(n int) []model.Commit {
+	commits := make([]model.Commit, n)
+	name := func(i int) string { return fmt.Sprintf("h%03d", i) }
+	for i := range n {
+		c := model.Commit{Hash: name(i), ShortHash: name(i), Subject: "c" + name(i)}
+		if i+1 < n {
+			c.Parents = []string{name(i + 1)}
+			if i%3 == 0 && i+3 < n {
+				c.Parents = append(c.Parents, name(i+3))
+			}
+		}
+		commits[i] = c
+	}
+	return commits
+}
+
+// TestHighlightRow_KeepsForegroundColors checks the selection background is
+// re-applied after every inner reset (so it spans the row) while the row's
+// own foreground colors survive.
+func TestHighlightRow_KeepsForegroundColors(t *testing.T) {
+	old := lipgloss.ColorProfile()
+	lipgloss.SetColorProfile(termenv.ANSI256)
+	defer lipgloss.SetColorProfile(old)
+
+	inner := lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Render("red") + " plain"
+	got := highlightRow(inner, 20)
+
+	bg, _, _ := strings.Cut(lipgloss.NewStyle().Background(colorSelectedBg).Render("x"), "x")
+	if bg == "" {
+		t.Fatal("expected a background sequence under ANSI256")
+	}
+	if !strings.HasPrefix(got, bg) {
+		t.Errorf("row should start with the background sequence")
+	}
+	if !strings.Contains(got, "\x1b[0m"+bg) {
+		t.Errorf("background must be re-applied after inner resets: %q", got)
+	}
+	if !strings.Contains(got, "196") {
+		t.Errorf("inner foreground color was lost: %q", got)
+	}
+	if w := lipgloss.Width(got); w != 20 {
+		t.Errorf("row should be padded to the pane width, got %d", w)
+	}
+}
+
+// TestLogPane_ViewFillsHeight checks a short list is padded to the pane
+// height, so the footer below it stays at the bottom of the terminal.
+func TestLogPane_ViewFillsHeight(t *testing.T) {
+	p := newTestLogPane() // 4 commits in a 20-line pane
+	if got := strings.Count(p.View(false), "\n") + 1; got != p.height {
+		t.Errorf("view is %d lines, want pane height %d", got, p.height)
+	}
+}
+
+func TestLogPane_JumpParentChildHead(t *testing.T) {
+	p := newTestLogPane() // d(merge b,c) c b(parent a) a
+	p.commits[2].Refs = []model.Ref{{Name: "main", Kind: model.RefHead, IsHead: true}}
+
+	if !p.jumpToHead() || p.commits[p.cursor].Hash != "b" {
+		t.Fatalf("H should land on b, cursor=%d", p.cursor)
+	}
+	if !p.jumpToParent() || p.commits[p.cursor].Hash != "a" {
+		t.Fatalf("parent of b is a, cursor=%d", p.cursor)
+	}
+	if p.jumpToParent() {
+		t.Error("a root commit has no parent to jump to")
+	}
+	if !p.jumpToChild() || p.commits[p.cursor].Hash != "b" {
+		t.Fatalf("child of a is b, cursor=%d", p.cursor)
+	}
+	p.setCursor(0, 0)
+	if p.jumpToChild() {
+		t.Error("the top commit has no child above it")
+	}
+	// A merge follows its FIRST parent (b), not the side branch (c).
+	if !p.jumpToParent() || p.commits[p.cursor].Hash != "b" {
+		t.Fatalf("merge d should follow first parent b, cursor=%d", p.cursor)
+	}
+}
+
+func TestApplyColors(t *testing.T) {
+	origHash, origLanes := colorHash, graph.LanePalette
+	defer func() {
+		colorHash = origHash
+		graph.LanePalette = origLanes
+		buildStyles()
+	}()
+
+	if err := ApplyColors(map[string]string{"hash": "#112233", "nope": "1"}, nil); err == nil {
+		t.Error("unknown color name should be rejected")
+	}
+	if err := ApplyColors(map[string]string{"hash": "red"}, nil); err == nil {
+		t.Error("invalid color value should be rejected")
+	}
+	if err := ApplyColors(nil, []string{"1", "300"}); err == nil {
+		t.Error("out-of-range lane color should be rejected")
+	}
+	if colorHash != origHash {
+		t.Fatal("a failed ApplyColors must not change anything")
+	}
+
+	if err := ApplyColors(map[string]string{"hash": "#112233"}, []string{"1", "#00ff00"}); err != nil {
+		t.Fatal(err)
+	}
+	if colorHash.Dark != "#112233" || colorHash.Light != "#112233" {
+		t.Errorf("hash color not applied: %+v", colorHash)
+	}
+	if len(graph.LanePalette) != 2 || graph.LanePalette[1].Dark != "#00ff00" {
+		t.Errorf("lane palette not applied: %+v", graph.LanePalette)
 	}
 }

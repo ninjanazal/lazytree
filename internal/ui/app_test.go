@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/eurico-martins/lazytree/internal/git"
 	"github.com/eurico-martins/lazytree/internal/graph"
@@ -347,5 +348,388 @@ func TestCommitsBatch_NilLayouterFallback(t *testing.T) {
 	want := graph.Layout(append(append([]model.Commit{}, branchCommits()...), more...))
 	if !reflect.DeepEqual(m.log.layout, want) {
 		t.Errorf("got layout %+v, want %+v", m.log.layout, want)
+	}
+}
+
+func press(t *testing.T, m AppModel, k string) AppModel {
+	t.Helper()
+	var msg tea.KeyMsg
+	switch k {
+	case "enter":
+		msg = tea.KeyMsg{Type: tea.KeyEnter}
+	case "esc":
+		msg = tea.KeyMsg{Type: tea.KeyEsc}
+	default:
+		msg = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(k)}
+	}
+	updated, _ := m.Update(msg)
+	return updated.(AppModel)
+}
+
+func TestApp_HelpOverlayToggles(t *testing.T) {
+	m := newSizedTestApp(t, 100, 40)
+	m = press(t, m, "?")
+	if !strings.Contains(m.View(), "next match") {
+		t.Fatalf("? should open the key overlay:\n%s", m.View())
+	}
+	m = press(t, m, "j") // swallowed while the overlay is open
+	if m.log.cursor != 0 {
+		t.Errorf("keys must not reach the log while help is open, cursor=%d", m.log.cursor)
+	}
+	m = press(t, m, "esc")
+	if strings.Contains(m.View(), "next match") {
+		t.Error("esc should close the overlay")
+	}
+}
+
+func TestApp_SearchJumpsAndEscRestores(t *testing.T) {
+	m := newSizedTestApp(t, 100, 40) // subjects: merge feature, feature work, main work, root
+	m = press(t, m, "/")
+	for _, r := range "work" {
+		m = press(t, m, string(r))
+	}
+	if m.log.cursor != 1 {
+		t.Fatalf("incremental search should land on first match (1), got %d", m.log.cursor)
+	}
+	m = press(t, m, "enter")
+	m = press(t, m, "n")
+	if m.log.cursor != 2 {
+		t.Errorf("n should go to the next match (2), got %d", m.log.cursor)
+	}
+	m = press(t, m, "N")
+	if m.log.cursor != 1 {
+		t.Errorf("N should go back to (1), got %d", m.log.cursor)
+	}
+	m = press(t, m, "esc") // clears highlights, keeps position
+	if m.log.searchActive() {
+		t.Error("esc in the log view should clear the search")
+	}
+
+	// Cancelling while typing restores where the search began.
+	m = press(t, m, "G")
+	m = press(t, m, "/")
+	m = press(t, m, "m")
+	m = press(t, m, "esc")
+	if m.log.cursor != 3 {
+		t.Errorf("esc during search should restore the cursor (3), got %d", m.log.cursor)
+	}
+}
+
+func TestApp_MouseWheelAndClick(t *testing.T) {
+	m := newSizedTestApp(t, 100, 40)
+
+	updated, _ := m.Update(tea.MouseMsg{Action: tea.MouseActionPress, Button: tea.MouseButtonWheelDown})
+	m = updated.(AppModel)
+	if m.log.cursor == 0 {
+		t.Error("wheel down should move the selection")
+	}
+
+	// Click on the third commit line: y = toolbar(1) + header(1) + line.
+	target := m.log.rowAtLine(2)
+	updated, _ = m.Update(tea.MouseMsg{Action: tea.MouseActionPress, Button: tea.MouseButtonLeft, X: 10, Y: toolbarHeight + 1 + 2})
+	m = updated.(AppModel)
+	if m.log.cursor != target {
+		t.Errorf("click should select row %d, got %d", target, m.log.cursor)
+	}
+
+	// A click below the last row selects nothing.
+	before := m.log.cursor
+	updated, _ = m.Update(tea.MouseMsg{Action: tea.MouseActionPress, Button: tea.MouseButtonLeft, Y: 30})
+	m = updated.(AppModel)
+	if m.log.cursor != before {
+		t.Errorf("click on empty space moved the cursor to %d", m.log.cursor)
+	}
+}
+
+func TestParseDeepQuery(t *testing.T) {
+	cases := []struct {
+		in   string
+		ok   bool
+		term string
+	}{
+		{"g:fix crash", true, "fix crash"},
+		{"s:needle", true, "needle"},
+		{"p:internal/ui", true, "internal/ui"},
+		{"g:", false, ""},
+		{"x:foo", false, ""},
+		{"plain", false, ""},
+		{"", false, ""},
+	}
+	for _, c := range cases {
+		_, term, ok := parseDeepQuery(c.in)
+		if ok != c.ok || term != c.term {
+			t.Errorf("parseDeepQuery(%q) = %q, %v; want %q, %v", c.in, term, ok, c.term, c.ok)
+		}
+	}
+}
+
+func TestApp_DeepSearchResultMarksMatches(t *testing.T) {
+	m := newSizedTestApp(t, 100, 40) // hashes d c b a
+	m = press(t, m, "/")
+	for _, r := range "g:x" {
+		m = press(t, m, string(r))
+	}
+	if m.log.searchActive() {
+		t.Error("a deep query must not run an in-memory search while typing")
+	}
+	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = updated.(AppModel)
+	if cmd == nil || !m.deepPending {
+		t.Fatal("enter should start a git-side search")
+	}
+	if got := m.searchStatus(); got != "searching…" {
+		t.Errorf("footer should show progress, got %q", got)
+	}
+
+	// A stale result is ignored; the current one marks commits b and c.
+	updated, _ = m.Update(MsgDeepSearch{Seq: m.deepSeq - 1, Label: "g:x", Hashes: []string{"a"}})
+	m = updated.(AppModel)
+	if m.log.searchActive() {
+		t.Error("stale result must be dropped")
+	}
+	updated, _ = m.Update(MsgDeepSearch{Seq: m.deepSeq, Label: "g:x", Hashes: []string{"c", "b"}})
+	m = updated.(AppModel)
+	if m.deepPending || m.log.search.count != 2 {
+		t.Fatalf("expected 2 matches and no pending search, got count=%d pending=%v", m.log.search.count, m.deepPending)
+	}
+	if m.log.cursor != 1 {
+		t.Errorf("cursor should jump to the first match (c, row 1), got %d", m.log.cursor)
+	}
+	m = press(t, m, "n")
+	if m.log.cursor != 2 {
+		t.Errorf("n should move to the next match (b, row 2), got %d", m.log.cursor)
+	}
+	if st := m.searchStatus(); !strings.Contains(st, "g:x") || !strings.Contains(st, "2/2") {
+		t.Errorf("status should show label and position, got %q", st)
+	}
+	m = press(t, m, "esc")
+	if m.log.searchActive() {
+		t.Error("esc should clear a deep search")
+	}
+}
+
+func TestApp_FlashShowsAndClears(t *testing.T) {
+	m := newSizedTestApp(t, 100, 40)
+	updated, cmd := m.Update(MsgFlash{Text: "copied abc1234"})
+	m = updated.(AppModel)
+	if cmd == nil {
+		t.Fatal("a flash must schedule its own clearing")
+	}
+	if !strings.Contains(m.View(), "copied abc1234") {
+		t.Errorf("flash missing from footer:\n%s", m.View())
+	}
+	// A stale clear (older flash) must not remove the current message.
+	updated, _ = m.Update(MsgFlashClear{Seq: m.flashSeq - 1})
+	m = updated.(AppModel)
+	if m.flashText == "" {
+		t.Error("stale clear removed the newer flash")
+	}
+	updated, _ = m.Update(MsgFlashClear{Seq: m.flashSeq})
+	m = updated.(AppModel)
+	if m.flashText != "" {
+		t.Error("matching clear should remove the flash")
+	}
+}
+
+func TestApp_CopyAndEditNeedACommit(t *testing.T) {
+	m := newSizedTestApp(t, 100, 40)
+	if _, cmd := m.updateLogKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("y")}); cmd == nil {
+		t.Error("y should return a copy command for the selected commit")
+	}
+	if _, cmd := m.updateLogKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("o")}); cmd == nil {
+		t.Error("o should return an editor command for the selected commit")
+	}
+	empty := NewApp(&git.Runner{RepoPath: "."})
+	if _, cmd := empty.updateLogKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("y")}); cmd != nil {
+		t.Error("y with no commits must do nothing")
+	}
+}
+
+func TestEditorCommandPrefersVisual(t *testing.T) {
+	t.Setenv("VISUAL", "code -w")
+	t.Setenv("EDITOR", "nano")
+	if got := editorCommand(); len(got) != 2 || got[0] != "code" || got[1] != "-w" {
+		t.Errorf("VISUAL should win and keep its args, got %v", got)
+	}
+	t.Setenv("VISUAL", "")
+	if got := editorCommand(); got[0] != "nano" {
+		t.Errorf("EDITOR fallback, got %v", got)
+	}
+	t.Setenv("EDITOR", "")
+	if got := editorCommand(); got[0] != "vi" {
+		t.Errorf("vi fallback, got %v", got)
+	}
+}
+
+func TestApp_FetchDisabledByOptions(t *testing.T) {
+	m := NewAppWithOptions(&git.Runner{RepoPath: "."}, Options{FetchInterval: 0, ShowAll: false})
+	if m.showAll {
+		t.Error("ShowAll option should be respected")
+	}
+	if !m.nextFetchAt.IsZero() {
+		t.Error("no fetch should be scheduled when the interval is 0")
+	}
+	bar := renderFetchBar(20, false, m.nextFetchAt, 0)
+	if strings.Contains(bar, "\x1b[") == false && strings.Count(bar, "─") != 20 {
+		t.Errorf("disabled fetch bar should be empty, got %q", bar)
+	}
+}
+
+func TestApplyKeys(t *testing.T) {
+	orig := keys
+	defer func() { keys = orig }()
+
+	for name, ov := range map[string]map[string][]string{
+		"unknown action": {"fly": {"f"}},
+		"empty list":     {"zen": {}},
+		"empty key":      {"zen": {""}},
+		"conflict":       {"zen": {"q"}}, // q is quit
+	} {
+		if err := ApplyKeys(ov); err == nil {
+			t.Errorf("%s: expected an error", name)
+		}
+	}
+	if keys.Zen.Keys()[0] != "z" {
+		t.Fatal("a rejected override must not change any binding")
+	}
+
+	// Swapping two actions' keys is not a conflict.
+	if err := ApplyKeys(map[string][]string{"zen": {"x"}, "toggle_refs": {"z"}, "quit": {"Q"}}); err != nil {
+		t.Fatal(err)
+	}
+	m := newSizedTestApp(t, 100, 40)
+	m = press(t, m, "z")
+	if m.mode == modeZen {
+		t.Error("z now toggles refs, not zen")
+	}
+	m = press(t, m, "x")
+	if m.mode != modeZen {
+		t.Error("x should now enter zen mode")
+	}
+	if !key.Matches(tea.KeyMsg{Type: tea.KeyCtrlC}, keys.Quit) {
+		t.Error("ctrl+c must always quit")
+	}
+	if h := keys.Zen.Help().Key; h != "x" {
+		t.Errorf("help label should follow the new key, got %q", h)
+	}
+}
+
+func TestApp_RefFilterKeysAndToolbar(t *testing.T) {
+	m := newSizedTestApp(t, 120, 40)
+	m.log.commits[0].Refs = []model.Ref{
+		{Name: "v9", Kind: model.RefTag},
+		{Name: "origin/dev", Kind: model.RefRemoteBranch},
+	}
+	m.log.setCommits(m.log.commits, m.log.layout)
+
+	view := m.View()
+	if !strings.Contains(view, "tag: v9") || !strings.Contains(view, "origin/dev") {
+		t.Fatalf("both pills should show by default:\n%s", view)
+	}
+	m = press(t, m, "t")
+	view = m.View()
+	if strings.Contains(view, "tag: v9") || !strings.Contains(view, "origin/dev") || !strings.Contains(view, "no tags") {
+		t.Errorf("t should hide tags only and say so in the toolbar:\n%s", view)
+	}
+	m = press(t, m, "r")
+	if strings.Contains(m.View(), "origin/dev") {
+		t.Error("r should hide remote branches")
+	}
+	m = press(t, m, "t")
+	m = press(t, m, "r")
+	if !strings.Contains(m.View(), "tag: v9") {
+		t.Error("toggling again should bring pills back")
+	}
+}
+
+func TestApp_SplitViewLayoutAndFocus(t *testing.T) {
+	m := newSizedTestApp(t, 160, 40) // "auto" layout splits at >= 140 columns
+	if !m.splitActive() {
+		t.Fatal("a 160-column terminal should use the split layout")
+	}
+	view := m.View()
+	if h := strings.Count(view, "\n") + 1; h != 40 {
+		t.Errorf("split view is %d lines, want the terminal height 40", h)
+	}
+	if !strings.Contains(view, "Loading diff") {
+		t.Errorf("the diff pane should be visible next to the log:\n%s", view)
+	}
+
+	// Moving the cursor requests the diff of the newly selected commit.
+	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
+	m = updated.(AppModel)
+	if cmd == nil {
+		t.Error("in split view, moving must schedule a diff load")
+	}
+
+	// The diff pane shows the inspector for the loaded commit.
+	c := m.log.selectedCommit()
+	updated, _ = m.Update(MsgDiffLoaded{Hash: c.Hash, Files: []model.DiffFile{{
+		NewPath: "x.go", Status: "M",
+		Hunks: []model.DiffHunk{{Header: "@@ -1 +1 @@", Lines: []model.DiffLine{{Kind: model.DiffAdded, Text: "+hello", NewN: 1}}}},
+	}}})
+	m = updated.(AppModel)
+	if v := m.View(); !strings.Contains(v, "hello") || !strings.Contains(v, c.Subject) {
+		t.Errorf("split view should show the selected commit's diff and header:\n%s", v)
+	}
+
+	// enter focuses the diff (keys scroll it); esc returns to the log.
+	m = press(t, m, "enter")
+	if !m.popupOpen {
+		t.Error("enter should focus the diff pane in split view")
+	}
+	before := m.log.cursor
+	m = press(t, m, "j")
+	if m.log.cursor != before {
+		t.Error("with the diff focused, j must not move the log cursor")
+	}
+	m = press(t, m, "esc")
+	if m.popupOpen {
+		t.Error("esc should return focus to the log")
+	}
+
+	// v switches to the popup layout and back.
+	m = press(t, m, "v")
+	if m.splitActive() {
+		t.Error("v should switch to popup layout")
+	}
+	m = press(t, m, "v")
+	if !m.splitActive() {
+		t.Error("v again should return to split")
+	}
+}
+
+func TestApp_SplitViewNeedsWidth(t *testing.T) {
+	if newSizedTestApp(t, 120, 40).splitActive() {
+		t.Error("auto layout must not split below 140 columns")
+	}
+	m := NewAppWithOptions(&git.Runner{RepoPath: "."}, Options{Layout: "split", FetchInterval: 0})
+	updated, _ := m.Update(tea.WindowSizeMsg{Width: 90, Height: 30})
+	if updated.(AppModel).splitActive() {
+		t.Error("even a forced split needs 100 columns")
+	}
+	pm := NewAppWithOptions(&git.Runner{RepoPath: "."}, Options{Layout: "popup"})
+	updated, _ = pm.Update(tea.WindowSizeMsg{Width: 200, Height: 50})
+	if updated.(AppModel).splitActive() {
+		t.Error("layout = popup must never split")
+	}
+}
+
+func TestApp_SplitViewMouse(t *testing.T) {
+	m := newSizedTestApp(t, 160, 40)
+	diffX := sideMargin + m.log.width + 5
+
+	updated, _ := m.Update(tea.MouseMsg{Action: tea.MouseActionPress, Button: tea.MouseButtonLeft, X: diffX, Y: 5})
+	m = updated.(AppModel)
+	if !m.popupOpen {
+		t.Error("clicking the diff pane should focus it")
+	}
+	updated, _ = m.Update(tea.MouseMsg{Action: tea.MouseActionPress, Button: tea.MouseButtonLeft, X: 10, Y: toolbarHeight + 1 + 1})
+	m = updated.(AppModel)
+	if m.popupOpen {
+		t.Error("clicking the log should return focus to it")
+	}
+	if m.log.cursor != m.log.rowAtLine(1) {
+		t.Errorf("click in the log should still select a row, cursor=%d", m.log.cursor)
 	}
 }

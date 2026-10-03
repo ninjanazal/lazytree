@@ -4,11 +4,11 @@
     "type": "split",
     "children": [
       {
-        "id": "a0f277c4ae4cdf5e",
+        "id": "33448a21601cedff",
         "type": "tabs",
         "children": [
           {
-            "id": "9294b159f90a0c28",
+            "id": "b872107667726213",
             "type": "leaf",
             "state": {
               "type": "excalidraw",
@@ -184,20 +184,20 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "9294b159f90a0c28",
+  "active": "b872107667726213",
   "lastOpenFiles": [
-    "BaseOverview.md",
-    "Overview/05 Missing & Risks.md",
     "Overview/06 Roadmap.md",
+    "Overview/05 Missing & Risks.md",
+    "Overview/01 Idea & Vision.md",
+    "BaseOverview.md",
+    "Overview/02 Architecture.md",
+    "Overview/03 Runtime & Message Flow.md",
+    "Overview/04 Design Choices.md",
     "Overview/06 Roadmap.md.tmp.132637.85ff5008f3b8",
     "Overview/05 Missing & Risks.md.tmp.132637.a1caf080abea",
     "Overview/06 Roadmap.md.tmp.132637.200a0c8afa28",
-    "Overview/02 Architecture.md",
-    "Overview/03 Runtime & Message Flow.md",
-    "Overview/01 Idea & Vision.md",
     "Overview/05 Missing & Risks.md.tmp.132637.17f895393d92",
     "Overview/06 Roadmap.md.tmp.132637.d27416be93c8",
-    "Overview/04 Design Choices.md",
     "06 Roadmap.md",
     "05 Missing & Risks.md",
     "04 Design Choices.md",

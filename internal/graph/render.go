@@ -141,8 +141,9 @@ func colorize(s string, colorIdx int) string {
 	return lipgloss.NewStyle().Foreground(LanePalette[colorIdx]).Render(s)
 }
 
-// StripColors removes ANSI escape codes for width calculations.
-// Use lipgloss.Width() instead for accurate terminal width.
+// GraphWidth is the number of terminal columns a graph with the given lane
+// count occupies. Measure already-rendered (ANSI-colored) text with
+// lipgloss.Width instead.
 func GraphWidth(width int) int {
 	// Each lane is 1 glyph + 1 space separator, minus trailing space.
 	if width <= 0 {

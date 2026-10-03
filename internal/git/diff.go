@@ -2,6 +2,7 @@ package git
 
 import (
 	"context"
+	"strconv"
 	"strings"
 
 	"github.com/eurico-martins/lazytree/internal/model"
@@ -22,6 +23,7 @@ func ParseDiff(raw string) []model.DiffFile {
 	var files []model.DiffFile
 	var cur *model.DiffFile
 	var curHunk *model.DiffHunk
+	var oldN, newN int // next line number on each side within curHunk
 
 	lines := strings.Split(raw, "\n")
 	// git's output ends with a trailing newline after the last content
@@ -53,6 +55,9 @@ func ParseDiff(raw string) []model.DiffFile {
 
 		case strings.HasPrefix(line, "deleted file mode"):
 			cur.Status = "D"
+
+		case curHunk == nil && strings.HasPrefix(line, "Binary files "):
+			cur.Binary = true
 
 		case strings.HasPrefix(line, "rename from "):
 			cur.Status = "R"
@@ -90,18 +95,28 @@ func ParseDiff(raw string) []model.DiffFile {
 				cur.Hunks = append(cur.Hunks, *curHunk)
 			}
 			curHunk = &model.DiffHunk{Header: line}
+			oldN, newN = parseHunkStarts(line)
 
 		case curHunk != nil:
-			var kind model.DiffLineKind
+			dl := model.DiffLine{Kind: model.DiffContext, Text: line}
 			switch {
 			case strings.HasPrefix(line, "+"):
-				kind = model.DiffAdded
+				dl.Kind = model.DiffAdded
+				dl.NewN = newN
+				newN++
 			case strings.HasPrefix(line, "-"):
-				kind = model.DiffRemoved
+				dl.Kind = model.DiffRemoved
+				dl.OldN = oldN
+				oldN++
+			case strings.HasPrefix(line, `\`):
+				// "\ No newline at end of file" annotates the previous
+				// line; it occupies no line number on either side.
 			default:
-				kind = model.DiffContext
+				dl.OldN, dl.NewN = oldN, newN
+				oldN++
+				newN++
 			}
-			curHunk.Lines = append(curHunk.Lines, model.DiffLine{Kind: kind, Text: line})
+			curHunk.Lines = append(curHunk.Lines, dl)
 		}
 	}
 
@@ -159,4 +174,30 @@ func parseUnifiedPath(line, prefix string) (path string, ok bool) {
 	path = strings.TrimPrefix(line, prefix)
 	path = strings.TrimSuffix(path, "\t")
 	return path, true
+}
+
+// parseHunkStarts reads the starting old/new line numbers from a hunk
+// header such as "@@ -12,5 +14,7 @@ func foo()". It returns 0, 0 if the
+// header is malformed, so line numbers degrade to "unknown" rather than
+// failing the whole parse.
+func parseHunkStarts(header string) (oldStart, newStart int) {
+	fields := strings.Fields(header)
+	if len(fields) < 3 {
+		return 0, 0
+	}
+	oldStart = hunkStart(fields[1], "-")
+	newStart = hunkStart(fields[2], "+")
+	return oldStart, newStart
+}
+
+func hunkStart(field, prefix string) int {
+	if !strings.HasPrefix(field, prefix) {
+		return 0
+	}
+	n, _, _ := strings.Cut(strings.TrimPrefix(field, prefix), ",")
+	v, err := strconv.Atoi(n)
+	if err != nil {
+		return 0
+	}
+	return v
 }

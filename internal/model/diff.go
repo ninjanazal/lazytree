@@ -26,5 +26,6 @@ type DiffFile struct {
 	OldPath string
 	NewPath string
 	Status  string // A, M, D, R, C
+	Binary  bool   // git reported "Binary files ... differ"; there are no hunks
 	Hunks   []DiffHunk
 }

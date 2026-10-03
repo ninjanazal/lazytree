@@ -4,12 +4,16 @@ import (
 	"fmt"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 )
 
 // renderToolbar renders the top bar: app/repo name on the left, the current
 // branch and ref-filter state on the right.
-func renderToolbar(width int, repoName, branch string, showAll bool) string {
+func renderToolbar(width int, repoName, branch string, showAll bool, hidden string) string {
 	right := ""
+	if hidden != "" {
+		right += styleHelp.Render(hidden) + "  "
+	}
 	if branch != "" {
 		right = styleToolbarPill.Render(" "+branch+" ") + "  "
 	}
@@ -28,7 +32,7 @@ func renderToolbar(width int, repoName, branch string, showAll bool) string {
 	}
 
 	pad := max(width-lipgloss.Width(left)-lipgloss.Width(right), 1)
-	return styleToolbar.Render(fmt.Sprintf("%s%s%s", left, repeatSpaces(pad), right))
+	return ansi.Truncate(styleToolbar.Render(fmt.Sprintf("%s%s%s", left, repeatSpaces(pad), right)), width, "")
 }
 
 func repeatSpaces(n int) string {

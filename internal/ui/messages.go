@@ -26,7 +26,7 @@ type MsgCommitsBatch struct {
 	Done    bool
 }
 
-// MsgFetchTick fires every fetchInterval while lazytree is open. It kicks
+// MsgFetchTick fires every fetch interval while lazytree is open. It kicks
 // off a background `git fetch` (if one isn't already running) and
 // reschedules itself for the next interval.
 type MsgFetchTick struct {
@@ -90,7 +90,12 @@ type MsgError struct {
 	Err error
 }
 
-type MsgSearchResult struct {
-	Query   string
-	Indices []int
+// MsgDeepSearch carries the result of a git-side search (g:/s:/p:). Seq ties
+// it to the search that started it, so a result for a query the user has
+// since replaced or cancelled is dropped.
+type MsgDeepSearch struct {
+	Seq    int
+	Label  string
+	Hashes []string
+	Err    error
 }

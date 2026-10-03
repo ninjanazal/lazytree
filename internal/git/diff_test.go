@@ -318,3 +318,45 @@ func TestParseDiff_HunkLinesLookingLikeFileHeaders(t *testing.T) {
 		t.Errorf("hunk lines = %#v, want one removed and one added line", lines)
 	}
 }
+
+func TestParseDiff_LineNumbers(t *testing.T) {
+	raw := "diff --git a/f.txt b/f.txt\n" +
+		"--- a/f.txt\n+++ b/f.txt\n" +
+		"@@ -10,4 +20,4 @@ func x()\n" +
+		" ctx\n-gone\n+new\n" +
+		"\\ No newline at end of file\n" +
+		" tail\n"
+	files := ParseDiff(raw)
+	if len(files) != 1 || len(files[0].Hunks) != 1 {
+		t.Fatalf("unexpected parse: %+v", files)
+	}
+	want := []struct{ old, new int }{{10, 20}, {11, 0}, {0, 21}, {0, 0}, {12, 22}}
+	lines := files[0].Hunks[0].Lines
+	if len(lines) != len(want) {
+		t.Fatalf("got %d lines, want %d", len(lines), len(want))
+	}
+	for i, w := range want {
+		if lines[i].OldN != w.old || lines[i].NewN != w.new {
+			t.Errorf("line %d (%q): got old=%d new=%d, want old=%d new=%d",
+				i, lines[i].Text, lines[i].OldN, lines[i].NewN, w.old, w.new)
+		}
+	}
+}
+
+func TestParseDiff_BinaryFile(t *testing.T) {
+	raw := "diff --git a/img.png b/img.png\n" +
+		"index 111..222 100644\n" +
+		"Binary files a/img.png and b/img.png differ\n" +
+		"diff --git a/f.txt b/f.txt\n" +
+		"--- a/f.txt\n+++ b/f.txt\n@@ -1 +1 @@\n-a\n+b\n"
+	files := ParseDiff(raw)
+	if len(files) != 2 {
+		t.Fatalf("got %d files, want 2", len(files))
+	}
+	if !files[0].Binary || len(files[0].Hunks) != 0 {
+		t.Errorf("first file should be binary with no hunks: %+v", files[0])
+	}
+	if files[1].Binary || len(files[1].Hunks) != 1 {
+		t.Errorf("second file should be a normal text diff: %+v", files[1])
+	}
+}

@@ -1,4 +1,4 @@
-.PHONY: build test lint fmt vet clean run demo help
+.PHONY: build test lint fmt vet clean run demo perf help
 
 .DEFAULT_GOAL := build
 
@@ -19,7 +19,7 @@ vet: ## Run go vet on all packages
 fmt: ## Auto-format all Go files with gofmt
 	gofmt -w .
 
-fmt-check: ## Check formatting without modifying files (used in CI)
+fmt-check: ## Check formatting without modifying files (used in CI, see .github/workflows/ci.yml)
 	@test -z "$$(gofmt -l .)" || (echo "Run 'make fmt' to fix formatting:" && gofmt -l . && exit 1)
 
 clean: ## Remove the built binary
@@ -30,6 +30,9 @@ run: build ## Build and run against the current directory
 
 demo: ## Build and run against a generated multi-branch test repo
 	@./scripts/demo-repo.sh --run
+
+perf: ## Measure load/scroll/search on a synthetic 100k-commit repo
+	@dir=$$(./scripts/big-repo.sh) && LAZYTREE_BIGREPO=$$dir go test ./internal/ui -run LargeRepo -v; rm -rf $$dir
 
 help: ## Show this help
 	@printf '\033[1mlazytree — available make targets\033[0m\n\n'

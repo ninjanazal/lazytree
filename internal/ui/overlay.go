@@ -13,6 +13,13 @@ import (
 func overlayCenter(base, popup string, width, height int) string {
 	baseLines := padLines(strings.Split(base, "\n"), width, height)
 	popupLines := strings.Split(popup, "\n")
+	// A popup larger than the terminal is cropped, not allowed to overflow.
+	if len(popupLines) > height {
+		popupLines = popupLines[:height]
+	}
+	for i, l := range popupLines {
+		popupLines[i] = ansi.Truncate(l, width, "")
+	}
 
 	popupW := 0
 	for _, l := range popupLines {

@@ -13,15 +13,15 @@ import (
 )
 
 type logPane struct {
-	commits     []model.Commit
-	layout      model.GraphLayout
-	cursor      int
-	offset      int // scroll offset
-	height      int
-	width       int
-	showAll     bool
-	filterQuery string
-	filtered    []int // indices into commits matching filter
+	commits []model.Commit
+	layout  model.GraphLayout
+	cursor  int
+	offset  int // scroll offset
+	height  int
+	width   int
+	showAll bool
+	search  logSearch
+	refs    refFilter // which ref pills to hide (display only)
 
 	// Cached render state, kept current by setCommits/setSize. View() must
 	// never recompute these directly: with tens of thousands of commits,
@@ -70,6 +70,7 @@ func (p *logPane) setSize(w, h int) {
 		// (potentially expensive) graph-line render on a resize.
 		p.recomputeMessageW()
 	}
+	p.ensureVisible()
 }
 
 // setCommits replaces the commit list and rebuilds the render cache.
@@ -93,8 +94,8 @@ func (p *logPane) updateCommits(commits []model.Commit, layout model.GraphLayout
 
 	p.commits = commits
 	p.layout = layout
-	p.filtered = nil
 	p.extendCache(from)
+	p.extendSearch(from)
 
 	if prevHash != "" {
 		if idx := indexOfHash(commits, prevHash); idx >= 0 {
@@ -130,22 +131,75 @@ func (p *logPane) selectedCommit() *model.Commit {
 	return &p.commits[idx]
 }
 
+// rowHeight is how many screen lines the visible row idx takes: 1, or 2
+// when its graph cell carries a connector line (a merge/fork diagonal)
+// drawn beneath it.
+func (p *logPane) rowHeight(idx int) int {
+	commitIdx := p.visibleIndex(idx)
+	if commitIdx >= 0 && commitIdx < len(p.cachedGraphLines) &&
+		strings.Contains(p.cachedGraphLines[commitIdx], "\n") {
+		return 2
+	}
+	return 1
+}
+
+// viewRows is the number of screen lines available for commit rows (the
+// pane height minus the column-header row).
+func (p *logPane) viewRows() int {
+	return max(p.height-1, 1)
+}
+
+// ensureVisible adjusts the scroll offset so the cursor row, including its
+// connector line, lies fully inside the window. Scrolling counts screen
+// lines rather than commits, because connector rows make some commits two
+// lines tall.
+func (p *logPane) ensureVisible() {
+	count := p.visibleCount()
+	if count == 0 {
+		p.offset = 0
+		return
+	}
+	p.cursor = min(max(p.cursor, 0), count-1)
+	p.offset = min(max(p.offset, 0), p.cursor)
+	rows := p.viewRows()
+	used := 0
+	for i := p.offset; i <= p.cursor; i++ {
+		used += p.rowHeight(i)
+	}
+	for used > rows && p.offset < p.cursor {
+		used -= p.rowHeight(p.offset)
+		p.offset++
+	}
+}
+
+// rowAtLine returns the visible row shown at line y of the commit area
+// (0 = first commit line, just under the column header), or -1 if y is
+// below the last row. A commit's connector line belongs to that commit.
+func (p *logPane) rowAtLine(y int) int {
+	if y < 0 {
+		return -1
+	}
+	line := 0
+	for idx := p.offset; idx < p.visibleCount(); idx++ {
+		line += p.rowHeight(idx)
+		if y < line {
+			return idx
+		}
+	}
+	return -1
+}
+
 func (p *logPane) moveUp() {
 	if p.cursor > 0 {
 		p.cursor--
-		if p.cursor < p.offset {
-			p.offset = p.cursor
-		}
+		p.ensureVisible()
 	}
 }
 
 func (p *logPane) moveDown() {
-	count := p.visibleCount()
-	if p.cursor < count-1 {
+	if p.cursor < p.visibleCount()-1 {
 		p.cursor++
-		if p.cursor >= p.offset+p.height-2 {
-			p.offset = p.cursor - (p.height - 3)
-		}
+		p.ensureVisible()
 	}
 }
 
@@ -155,55 +209,32 @@ func (p *logPane) moveTop() {
 }
 
 func (p *logPane) moveBottom() {
-	count := p.visibleCount()
-	p.cursor = max(0, count-1)
-	p.offset = max(0, p.cursor-(p.height-3))
+	p.cursor = max(0, p.visibleCount()-1)
+	p.ensureVisible()
 }
 
 func (p *logPane) pageUp() {
-	p.cursor = max(0, p.cursor-(p.height-2))
-	p.offset = max(0, p.offset-(p.height-2))
+	n := max(p.viewRows()-1, 1)
+	p.cursor = max(0, p.cursor-n)
+	p.offset = max(0, p.offset-n)
+	p.ensureVisible()
 }
 
 func (p *logPane) pageDown() {
-	count := p.visibleCount()
-	p.cursor = min(count-1, p.cursor+(p.height-2))
-	p.offset = min(max(0, count-(p.height-2)), p.offset+(p.height-2))
-}
-
-func (p *logPane) applyFilter(query string) {
-	p.filterQuery = query
-	if query == "" {
-		p.filtered = nil
-		return
-	}
-	q := strings.ToLower(query)
-	var matches []int
-	for i, c := range p.commits {
-		if strings.Contains(strings.ToLower(c.Subject), q) ||
-			strings.Contains(strings.ToLower(c.Hash), q) ||
-			strings.Contains(strings.ToLower(c.Author), q) {
-			matches = append(matches, i)
-		}
-	}
-	p.filtered = matches
-	p.cursor = 0
-	p.offset = 0
+	n := max(p.viewRows()-1, 1)
+	p.cursor = min(p.visibleCount()-1, p.cursor+n)
+	p.offset += n
+	p.ensureVisible()
 }
 
 func (p *logPane) visibleCount() int {
-	if p.filtered != nil {
-		return len(p.filtered)
-	}
 	return len(p.commits)
 }
 
+// visibleIndex maps a row position to a commit index, or -1 if out of range.
 func (p *logPane) visibleIndex(cursor int) int {
-	if p.filtered != nil {
-		if cursor < 0 || cursor >= len(p.filtered) {
-			return -1
-		}
-		return p.filtered[cursor]
+	if cursor < 0 || cursor >= len(p.commits) {
+		return -1
 	}
 	return cursor
 }
@@ -309,11 +340,12 @@ func (p *logPane) View(focused bool) string {
 			node := p.layout.Nodes[commitIdx]
 			hashColor = graph.LanePalette[node.Color%len(graph.LanePalette)]
 		}
-		hash := lipgloss.NewStyle().Foreground(hashColor).Bold(true).Width(hashColW).Render(c.ShortHash)
+		q := p.search.highlightQuery()
+		hash := padRight(highlightMatches(c.ShortHash, q, lipgloss.NewStyle().Foreground(hashColor).Bold(true)), hashColW)
 		subject := c.Subject
-		author := styleAuthor.Width(authorColW).Render(truncate(c.Author, 16))
+		author := padRight(highlightMatches(truncate(c.Author, 16), q, styleAuthor), authorColW)
 		date := styleDate.Width(dateColW).Render(relativeTime(c.Timestamp))
-		pills := renderRefPills(c.Refs)
+		pills := renderRefPills(p.refs.apply(c.Refs))
 
 		// Available width for subject within the fixed message column.
 		pillsW := lipgloss.Width(pills)
@@ -324,44 +356,39 @@ func (p *logPane) View(focused bool) string {
 		if subjectW < 5 && pillsW < messageW-5 {
 			subjectW = 5
 		}
-		subject = truncate(subject, subjectW)
+		subject = highlightMatches(truncate(subject, subjectW), q, lipgloss.NewStyle())
 
 		messageField := subject
 		if pills != "" {
 			if subjectW <= 0 {
-				messageField = pills
+				messageField = ansi.Truncate(pills, messageW, "…")
 			} else {
 				messageField = pills + " " + subject
 			}
 		}
 		messageField = padRight(messageField, messageW)
 
-		line := fmt.Sprintf(" %s  %s  %s%s%s%s%s",
-			graphRow, hash, messageField, authorGap, author, authorGap, date,
+		marker := " "
+		if p.search.matches(commitIdx) {
+			marker = styleMatchMarker.Render("▌")
+		}
+		line := fmt.Sprintf("%s%s  %s  %s%s%s%s%s",
+			marker, graphRow, hash, messageField, authorGap, author, authorGap, date,
 		)
 
 		if selected {
-			// Strip the per-field ANSI styling first: each inner
-			// lipgloss.Render call emits its own reset, which would
-			// otherwise cut the selection background short after the
-			// first colored segment. Render the plain text through
-			// styleSelected instead so the background spans the full row.
-			plain := ansi.Strip(line)
-			lineW := lipgloss.Width(plain)
-			paneW := p.width - 1
-			if lineW < paneW {
-				plain += strings.Repeat(" ", paneW-lineW)
-			}
-			line = styleSelected.Render(plain)
+			line = highlightRow(line, p.width-1)
 		}
 
-		sb.WriteString(line)
+		// On a terminal narrower than the fixed columns (or with ref pills
+		// wider than the message column), clip the row rather than let it
+		// overflow and wrap.
+		sb.WriteString(ansi.Truncate(line, p.width, ""))
 		sb.WriteString("\n")
 		lineBudget--
 
 		if graphConn != "" && lineBudget > 0 {
-			sb.WriteString(" ")
-			sb.WriteString(graphConn)
+			sb.WriteString(ansi.Truncate(" "+graphConn, p.width, ""))
 			sb.WriteString("\n")
 			lineBudget--
 		}
@@ -372,7 +399,15 @@ func (p *logPane) View(focused bool) string {
 	// Every row above is written with a trailing "\n"; drop the last one so
 	// the pane is exactly header + rows tall. Callers join panes with "\n",
 	// and a trailing newline here would add a phantom blank line.
-	return " " + header + "\n" + strings.TrimSuffix(sb.String(), "\n")
+	out := ansi.Truncate(" "+header, p.width, "") + "\n" + strings.TrimSuffix(sb.String(), "\n")
+
+	// Pad short lists with blank lines up to the pane height so the footer
+	// and fetch bar stay pinned to the bottom of the terminal rather than
+	// floating right under the last commit.
+	if missing := p.height - (strings.Count(out, "\n") + 1); missing > 0 {
+		out += strings.Repeat("\n", missing)
+	}
+	return out
 }
 
 // renderLogHeader builds the column-label header row, aligned to the same
@@ -461,4 +496,23 @@ func truncate(s string, n int) string {
 		return string(runes[:n])
 	}
 	return string(runes[:n-1]) + "…"
+}
+
+// highlightRow marks a row as selected by giving it a background across the
+// full width while keeping the foreground colors of its parts (lane colors,
+// ref pills, author, ...). Every reset sequence inside line would otherwise
+// end the background early, so it is re-applied after each one.
+func highlightRow(line string, width int) string {
+	if pad := width - lipgloss.Width(line); pad > 0 {
+		line += strings.Repeat(" ", pad)
+	}
+	bg := lipgloss.NewStyle().Background(colorSelectedBg).Render("x")
+	seq, _, found := strings.Cut(bg, "x")
+	if !found || seq == "" {
+		// No color support: fall back to reverse video so the row is
+		// still distinguishable.
+		return lipgloss.NewStyle().Reverse(true).Render(ansi.Strip(line))
+	}
+	const reset = "\x1b[0m"
+	return seq + strings.ReplaceAll(line, reset, reset+seq) + reset
 }
