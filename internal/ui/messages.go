@@ -53,9 +53,10 @@ type MsgFetchResult struct {
 // itself, via diffPane.setError) -- see the M1 roadmap's "Done when: ... a
 // bad diff doesn't kill the app".
 type MsgDiffLoaded struct {
-	Hash  string
-	Files []model.DiffFile
-	Err   error
+	Hash    string
+	Files   []model.DiffFile
+	Content string // rendered off the UI goroutine (see renderDiffContent)
+	Err     error
 }
 
 type MsgDiffDebounce struct {

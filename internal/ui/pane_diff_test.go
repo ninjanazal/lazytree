@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -50,5 +51,39 @@ func TestDiffPaneEmptyDiffKeepsHeader(t *testing.T) {
 	out := p.renderContent()
 	if !strings.Contains(out, "merge") || !strings.Contains(out, "No diff available") {
 		t.Errorf("empty diff should show header and notice, got %q", out)
+	}
+}
+
+// TestRenderDiffContent_HugeLinesAreFast guards the startup freeze: a commit
+// whose files are single 180k-character lines (Excalidraw JSON, minified
+// assets) must render quickly, with long lines clipped and not highlighted.
+func TestRenderDiffContent_HugeLinesAreFast(t *testing.T) {
+	huge := "+" + strings.Repeat(`{"type":"text","x":1,"y":2},`, 6500) // ~180k chars
+	var files []model.DiffFile
+	for i := range 40 {
+		files = append(files, model.DiffFile{NewPath: fmt.Sprintf("page%d.md", i), Status: "M",
+			Hunks: []model.DiffHunk{{Header: "@@ -1 +1 @@", Lines: []model.DiffLine{
+				{Kind: model.DiffAdded, Text: huge, NewN: 1},
+			}}}})
+	}
+	start := time.Now()
+	out := renderDiffContent(&model.Commit{Hash: "abc"}, files, 100)
+	if d := time.Since(start); d > 2*time.Second {
+		t.Errorf("rendering took %v; huge lines must be clipped, not highlighted", d)
+	}
+	if len(out) > 40*(maxDiffLineLen+500) {
+		t.Errorf("output is %d bytes; long lines should be clipped to ~%d", len(out), maxDiffLineLen)
+	}
+}
+
+func TestRenderDiffContent_TruncatesHugeDiffs(t *testing.T) {
+	lines := make([]model.DiffLine, maxDiffRenderLines+500)
+	for i := range lines {
+		lines[i] = model.DiffLine{Kind: model.DiffAdded, Text: "+x", NewN: i + 1}
+	}
+	out := renderDiffContent(&model.Commit{Hash: "abc"},
+		[]model.DiffFile{{NewPath: "big.txt", Status: "A", Hunks: []model.DiffHunk{{Header: "@@", Lines: lines}}}}, 100)
+	if !strings.Contains(out, "diff truncated") {
+		t.Error("a diff over the line cap should end with a truncation notice")
 	}
 }

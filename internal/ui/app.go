@@ -309,11 +309,26 @@ func closeLogStreamCmd(s *git.LogStream) tea.Cmd {
 	}
 }
 
-func (m AppModel) loadDiffCmd(hash string) tea.Cmd {
+// loadDiffCmd fetches, parses AND renders a commit's diff in the
+// background. Rendering a big diff (syntax colouring) can take a while, so
+// it must not happen inside Update, or the whole UI freezes.
+func (m AppModel) loadDiffCmd(hash string, commit model.Commit) tea.Cmd {
+	width := m.diff.viewport.Width
 	return func() tea.Msg {
 		ctx := context.Background()
 		files, err := git.FetchDiff(ctx, m.runner, hash)
-		return MsgDiffLoaded{Hash: hash, Files: files, Err: err}
+		if err != nil {
+			return MsgDiffLoaded{Hash: hash, Err: err}
+		}
+		return MsgDiffLoaded{Hash: hash, Files: files, Content: renderDiffContent(&commit, files, width)}
+	}
+}
+
+// renderDiffCmd renders an already-parsed (cached) diff in the background.
+func (m AppModel) renderDiffCmd(hash string, commit model.Commit, files []model.DiffFile) tea.Cmd {
+	width := m.diff.viewport.Width
+	return func() tea.Msg {
+		return MsgDiffLoaded{Hash: hash, Files: files, Content: renderDiffContent(&commit, files, width)}
 	}
 }
 
@@ -442,11 +457,12 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case MsgDiffDebounce:
 		if msg.Seq == m.debounceSeq {
 			if c := m.log.selectedCommit(); c != nil && c.Hash == msg.Hash {
+				cc := *c
+				m.diff.setPending(msg.Hash, &cc)
 				if files, ok := m.diffCache.get(msg.Hash); ok {
-					cc := *c
-					m.diff.setDiff(msg.Hash, &cc, files)
+					cmds = append(cmds, m.renderDiffCmd(msg.Hash, cc, files))
 				} else {
-					cmds = append(cmds, m.loadDiffCmd(msg.Hash))
+					cmds = append(cmds, m.loadDiffCmd(msg.Hash, cc))
 				}
 			}
 		}
@@ -463,7 +479,7 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.diff.setError(msg.Hash, msg.Err)
 			} else {
 				cc := *c
-				m.diff.setDiff(msg.Hash, &cc, msg.Files)
+				m.diff.setRendered(msg.Hash, &cc, msg.Files, msg.Content)
 			}
 		}
 

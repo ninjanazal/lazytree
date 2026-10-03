@@ -4,19 +4,17 @@
     "type": "split",
     "children": [
       {
-        "id": "2743675a8d42d73d",
+        "id": "5d5795915e049164",
         "type": "tabs",
         "children": [
           {
-            "id": "c35e2be5e2fa2fb7",
+            "id": "b6a1278feaa691f5",
             "type": "leaf",
             "state": {
-              "type": "excalidraw",
-              "state": {
-                "file": "BaseOverview.md"
-              },
-              "icon": "excalidraw-icon",
-              "title": "BaseOverview"
+              "type": "empty",
+              "state": {},
+              "icon": "lucide-file",
+              "title": "New tab"
             }
           }
         ]
@@ -184,7 +182,7 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "c35e2be5e2fa2fb7",
+  "active": "f008c62c1bec25ea",
   "lastOpenFiles": [
     "Overview/14 Glossary.md",
     "Overview/01 Idea & Vision.md",
