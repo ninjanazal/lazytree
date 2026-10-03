@@ -10,98 +10,479 @@ tags: [excalidraw, lazytree]
 # Excalidraw Data
 
 ## Text Elements
-💡 Idea & Vision ^p1x0001
+💡 ^pvi0002
 
-Why lazytree exists, where it sits, and what it promises ^p1x0002
+Idea & Vision ^pvi0003
 
-↩ Overview ^p1x0004
+The question lazytree answers, who it is for, the principles it follows, and what it will not do. ^pvi0004
 
-→ 02 Architecture ^p1x0006
+🏠 Hub ^pvi0006
 
-The one question ^p1x0008
+UI Guide → ^pvi0008
 
 “What happened in this repository,
-and how did we get here?” ^p1x0010
+  and how did we get here?” ^pvi0010
 
-A read-only Git history explorer for the
-terminal. Open it in any repo → full topology
-(all branches, remotes, tags), commit graph,
-ref labels and diffs. Never leave the
-terminal, never change the repo. ^p1x0012
+Open lazytree in any repository and immediately
+see the complete history: branches, merges,
+tags and diffs, without leaving the terminal. ^pvi0011
 
-Current scope (2026-10-03, dev) ^p1x0014
+Where it comes from ^pvi0012
 
-• ~7k lines of Go (incl. tests) · 5 packages · 14 test files · CI ^p1x0016
+🖼 gitk --all ^pvi0017
 
-• Features: graph log with lanes, ref pills, --all toggle,
-  jump-style search (n/N), commit inspector + syntax-colored
-  diff popup, parent/child/HEAD jumps, mouse, ? help,
-  light/dark colors, 60s background fetch, zen mode ^p1x0018
+Shows topology beautifully
+…but it is a separate GUI window,
+dated, and slow on huge repos. ^pvi0018
 
-• Stack: Go 1.26 · bubbletea v1.3 · lipgloss v1.1 · bubbles
-  v1.0 · chroma v2 · x/ansi ^p1x0020
+⌨ lazygit ^pvi0022
 
-• Only runtime dependency: the git binary ^p1x0022
+Fast, keyboard-driven terminal UX
+…but focused on doing things
+(staging, committing), not history. ^pvi0023
 
-Where it sits ^p1x0024
+🌳 lazytree ^pvi0027
 
-git log --graph --all
-✓ always there
-✗ static, no navigation, no diff on demand ^p1x0026
+gitk's picture of the history
++ lazygit's keyboard feel
++ a commit inspector and search
+in a fast, read-only terminal UI. ^pvi0028
 
-gitk --all
-✓ great topology view
-✗ needs a GUI (Tk), dated, awkward over SSH ^p1x0028
+topology ^pvi0031
 
-lazygit
-✓ great keyboard UX
-✗ built for doing (stage, rebase); graph is secondary ^p1x0030
+UX ^pvi0034
 
-tig
-✓ fast TUI log
-✗ basic graph, learning curve ^p1x0032
+Who it is for · typical moments ^pvi0035
 
-lazytree = gitk's topology + lazygit's feel,
-built only for understanding history ^p1x0034
+🧭 “Where did this branch come from?” ^pvi0040
 
-Principles ^p1x0036
+See lanes fork and merge; follow
+parents with p, children with c. ^pvi0041
 
-1. Instant: first page shows fast, the rest streams in ^p1x0038
+🕵 “When did this line change?” ^pvi0045
 
-2. Complete by default: --all on at startup ^p1x0040
+s:text searches added/removed code
+across the whole history (git -S). ^pvi0046
 
-3. Never freeze: no git I/O inside View(); everything via
-tea.Cmd ^p1x0042
+📝 “What is in this release?” ^pvi0050
 
-4. Keyboard first: j/k, g/G, ctrl+u/d ^p1x0044
+Tags are labels on the graph; open a
+commit to read its message and diff. ^pvi0051
 
-5. Read-only: can't lose work, safe to leave open; live
-fetch keeps it fresh ^p1x0046
+👀 “What did my team push?” ^pvi0055
 
-6. Beautiful: lane colors, rounded arcs ╭╮╰╯, ref pills, zen
-mode ^p1x0048
+Background fetch every 60 s; the view
+refreshes when refs actually change. ^pvi0056
 
-Non-goals & open questions ^p1x0050
+Principles ^pvi0057
 
-✗ Write operations (stage, commit, rebase): lazygit does
-these ^p1x0052
+These rules explain most of the design. See Design Choices for the details. ^pvi0059
 
-✗ Hosting features (PRs, issues) · ✗ a library API ^p1x0054
+🔒 Read-only ^pvi0063
 
-? Allow light actions (copy hash, checkout, $EDITOR) while
-staying mostly read-only? ^p1x0056
+Never modifies a repository: no checkout,
+no commit, no reset. Safe to open anywhere. ^pvi0064
 
-? Popup diff vs split view on wide terminals? README says
-responsive; code always uses the popup ^p1x0058
+⚡ Never freeze ^pvi0068
+
+History streams in pages; git always runs
+off the UI thread; the screen stays live. ^pvi0069
+
+🧱 Exact git semantics ^pvi0073
+
+Uses the real git binary, so mailmap, config,
+worktrees and submodules just work. ^pvi0074
+
+🌿 Picture first ^pvi0078
+
+The graph is the main view; everything else
+(inspector, search) serves understanding it. ^pvi0079
+
+🎨 Looks right anywhere ^pvi0083
+
+Light & dark terminals, narrow windows,
+mouse or keyboard, configurable keys. ^pvi0084
+
+🧪 Small & tested ^pvi0088
+
+Five small packages, one-way dependencies,
+a test for every bug that was fixed. ^pvi0089
+
+Feature map ^pvi0090
+
+lazytree ^pvi0093
+
+Graph ^pvi0097
+
+lanes · merges · ref labels
+--all or current branch ^pvi0098
+
+Inspect ^pvi0103
+
+hash · author · parents
+stat · numbered diff ^pvi0104
+
+Search ^pvi0109
+
+incremental · highlights
+g: s: p: across history ^pvi0110
+
+Navigate ^pvi0115
+
+j/k · pages · H · p/c
+mouse wheel & click ^pvi0116
+
+Live ^pvi0121
+
+background fetch
+countdown · auto refresh ^pvi0122
+
+Actions ^pvi0127
+
+y copy hash
+o open in $EDITOR ^pvi0128
+
+Look & feel ^pvi0133
+
+light/dark · split/popup
+zen mode ^pvi0134
+
+Configure ^pvi0139
+
+keys · colours · ref filters
+fetch interval · layout ^pvi0140
+
+Deliberately out of scope ^pvi0142
+
+Not a git client ^pvi0146
+
+No checkout, commit, rebase or reset.
+lazygit and git itself do that well. ^pvi0147
+
+⛔ ^pvi0148
+
+No Windows (for now) ^pvi0151
+
+Not built or tested there yet; would need
+path, clipboard and terminal work first. ^pvi0152
+
+⚠ ^pvi0153
+
+No automation that publishes ^pvi0156
+
+Nothing auto-publishes: no hosted CI, no
+release bots. Everything runs locally. ^pvi0157
+
+ℹ ^pvi0158
 
 ## Element Links
-p1x0003: [[BaseOverview]]
+pvi0005: [[BaseOverview]]
 
-p1x0005: [[02 Architecture]]
+pvi0007: [[09 UI Guide]]
+
+pvi0006: [[BaseOverview]]
+
+pvi0008: [[09 UI Guide]]
 
 %%
 ## Drawing
-```json
-{"type": "excalidraw", "version": 2, "source": "https://github.com/zsviczian/obsidian-excalidraw-plugin/releases/tag/2.27.3", "elements": [{"id": "p1x0001", "type": "text", "x": 0, "y": -190, "width": 359.81842041015625, "height": 55, "angle": 0, "strokeColor": "#1e1e1e", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": null, "seed": 577090038, "version": 2, "versionNonce": 754836761, "isDeleted": false, "boundElements": [], "updated": 1790443502223, "link": null, "locked": false, "text": "💡 Idea & Vision", "originalText": "💡 Idea & Vision", "fontSize": 44, "fontFamily": 5, "textAlign": "left", "verticalAlign": "top", "containerId": null, "lineHeight": 1.25, "autoResize": true, "baseline": 44, "index": "a0", "hasTextLink": false, "rawText": "", "labelPosition": null}, {"id": "p1x0002", "type": "text", "x": 0, "y": -125, "width": 491.5408630371094, "height": 22.5, "angle": 0, "strokeColor": "#495057", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": null, "seed": 1095513149, "version": 2, "versionNonce": 370234615, "isDeleted": false, "boundElements": [], "updated": 1790443502223, "link": null, "locked": false, "text": "Why lazytree exists, where it sits, and what it promises", "originalText": "Why lazytree exists, where it sits, and what it promises", "fontSize": 18, "fontFamily": 5, "textAlign": "left", "verticalAlign": "top", "containerId": null, "lineHeight": 1.25, "autoResize": true, "baseline": 18, "index": "a1", "hasTextLink": false, "rawText": "", "labelPosition": null}, {"id": "p1x0003", "type": "rectangle", "x": 0, "y": -80, "width": 126, "height": 36, "angle": 0, "strokeColor": "#495057", "backgroundColor": "#e9ecef", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": {"type": 3}, "seed": 2127877500, "version": 2, "versionNonce": 236182009, "isDeleted": false, "boundElements": [{"type": "text", "id": "p1x0004"}], "updated": 1790443502223, "link": "[[BaseOverview]]", "locked": false, "customData": {"legacyTextWrap": true}, "index": "a2", "hasTextLink": false}, {"id": "p1x0004", "type": "text", "x": 5, "y": -72, "width": 88.70417785644531, "height": 20, "angle": 0, "strokeColor": "#1e1e1e", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": null, "seed": 2028277858, "version": 3, "versionNonce": 1962312537, "isDeleted": false, "boundElements": [], "updated": 1790443502348, "link": null, "locked": false, "text": "↩ Overview", "originalText": "↩ Overview", "fontSize": 16, "fontFamily": 5, "textAlign": "left", "verticalAlign": "middle", "containerId": "p1x0003", "lineHeight": 1.25, "autoResize": true, "baseline": 16, "index": "a3", "hasTextLink": false, "rawText": "", "labelPosition": null}, {"id": "p1x0005", "type": "rectangle", "x": 142, "y": -80, "width": 193.2, "height": 36, "angle": 0, "strokeColor": "#495057", "backgroundColor": "#e9ecef", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": {"type": 3}, "seed": 901749038, "version": 2, "versionNonce": 1180185305, "isDeleted": false, "boundElements": [{"type": "text", "id": "p1x0006"}], "updated": 1790443502223, "link": "[[02 Architecture]]", "locked": false, "customData": {"legacyTextWrap": true}, "index": "a4", "hasTextLink": false}, {"id": "p1x0006", "type": "text", "x": 147, "y": -72, "width": 147.05624389648438, "height": 20, "angle": 0, "strokeColor": "#1e1e1e", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": null, "seed": 2095328387, "version": 3, "versionNonce": 31371321, "isDeleted": false, "boundElements": [], "updated": 1790443502348, "link": null, "locked": false, "text": "→ 02 Architecture", "originalText": "→ 02 Architecture", "fontSize": 16, "fontFamily": 5, "textAlign": "left", "verticalAlign": "middle", "containerId": "p1x0005", "lineHeight": 1.25, "autoResize": true, "baseline": 16, "index": "a5", "hasTextLink": false, "rawText": "", "labelPosition": null}, {"id": "p1x0007", "type": "rectangle", "x": 0, "y": 0, "width": 620, "height": 343, "angle": 0, "strokeColor": "#1971c2", "backgroundColor": "#e7f5ff", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "dashed", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": {"type": 3}, "seed": 1674216078, "version": 2, "versionNonce": 710832057, "isDeleted": false, "boundElements": [], "updated": 1790443502223, "link": null, "locked": false, "index": "a6", "hasTextLink": false}, {"id": "p1x0008", "type": "text", "x": 20, "y": 14, "width": 238.3929443359375, "height": 35, "angle": 0, "strokeColor": "#1971c2", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": null, "seed": 9045415, "version": 2, "versionNonce": 80495703, "isDeleted": false, "boundElements": [], "updated": 1790443502223, "link": null, "locked": false, "text": "The one question", "originalText": "The one question", "fontSize": 28, "fontFamily": 5, "textAlign": "left", "verticalAlign": "top", "containerId": null, "lineHeight": 1.25, "autoResize": true, "baseline": 28, "index": "a7", "hasTextLink": false, "rawText": "", "labelPosition": null}, {"id": "p1x0009", "type": "rectangle", "x": 24, "y": 70, "width": 572, "height": 78, "angle": 0, "strokeColor": "#1971c2", "backgroundColor": "#a5d8ff", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": {"type": 3}, "seed": 1143881028, "version": 2, "versionNonce": 810160281, "isDeleted": false, "boundElements": [{"type": "text", "id": "p1x0010"}], "updated": 1790443502223, "link": null, "locked": false, "customData": {"legacyTextWrap": true}, "index": "a8", "hasTextLink": false}, {"id": "p1x0010", "type": "text", "x": 29, "y": 84, "width": 335.9596862792969, "height": 50, "angle": 0, "strokeColor": "#1e1e1e", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": null, "seed": 439062304, "version": 3, "versionNonce": 518930713, "isDeleted": false, "boundElements": [], "updated": 1790443502348, "link": null, "locked": false, "text": "“What happened in this repository,\nand how did we get here?”", "originalText": "“What happened in this repository,\nand how did we get here?”", "fontSize": 20, "fontFamily": 5, "textAlign": "left", "verticalAlign": "middle", "containerId": "p1x0009", "lineHeight": 1.25, "autoResize": true, "baseline": 20, "index": "a9", "hasTextLink": false, "rawText": "", "labelPosition": null}, {"id": "p1x0011", "type": "rectangle", "x": 24, "y": 164, "width": 572, "height": 153, "angle": 0, "strokeColor": "#1971c2", "backgroundColor": "#ffffff", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": {"type": 3}, "seed": 131383005, "version": 2, "versionNonce": 1036948857, "isDeleted": false, "boundElements": [{"type": "text", "id": "p1x0012"}], "updated": 1790443502223, "link": null, "locked": false, "customData": {"legacyTextWrap": true}, "index": "aA", "hasTextLink": false}, {"id": "p1x0012", "type": "text", "x": 29, "y": 178, "width": 430.3396301269531, "height": 125, "angle": 0, "strokeColor": "#1e1e1e", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": null, "seed": 109289146, "version": 3, "versionNonce": 429438457, "isDeleted": false, "boundElements": [], "updated": 1790443502349, "link": null, "locked": false, "text": "A read-only Git history explorer for the\nterminal. Open it in any repo → full topology\n(all branches, remotes, tags), commit graph,\nref labels and diffs. Never leave the\nterminal, never change the repo.", "originalText": "A read-only Git history explorer for the\nterminal. Open it in any repo → full topology\n(all branches, remotes, tags), commit graph,\nref labels and diffs. Never leave the\nterminal, never change the repo.", "fontSize": 20, "fontFamily": 5, "textAlign": "left", "verticalAlign": "middle", "containerId": "p1x0011", "lineHeight": 1.25, "autoResize": true, "baseline": 20, "index": "aB", "hasTextLink": false, "rawText": "", "labelPosition": null}, {"id": "p1x0013", "type": "rectangle", "x": 0, "y": 393, "width": 620, "height": 387.25, "angle": 0, "strokeColor": "#495057", "backgroundColor": "#f8f9fa", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "dashed", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": {"type": 3}, "seed": 1637259728, "version": 2, "versionNonce": 909082201, "isDeleted": false, "boundElements": [], "updated": 1790443502223, "link": null, "locked": false, "index": "aC", "hasTextLink": false}, {"id": "p1x0014", "type": "text", "x": 20, "y": 407, "width": 460.433837890625, "height": 35, "angle": 0, "strokeColor": "#495057", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": null, "seed": 1812976886, "version": 3, "versionNonce": 80545593, "isDeleted": false, "boundElements": [], "updated": 1790000000000, "link": null, "locked": false, "text": "Current scope (2026-10-03, dev)", "originalText": "Current scope (2026-10-03, dev)", "fontSize": 28, "fontFamily": 5, "textAlign": "left", "verticalAlign": "top", "containerId": null, "lineHeight": 1.25, "autoResize": true, "baseline": 28, "index": "aD", "hasTextLink": false, "rawText": "Current scope (2026-10-03, dev)", "labelPosition": null}, {"id": "p1x0015", "type": "rectangle", "x": 24, "y": 463, "width": 572, "height": 46.75, "angle": 0, "strokeColor": "#495057", "backgroundColor": "#ffffff", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": {"type": 3}, "seed": 952158462, "version": 2, "versionNonce": 1212173113, "isDeleted": false, "boundElements": [{"type": "text", "id": "p1x0016"}], "updated": 1790443502223, "link": null, "locked": false, "customData": {"legacyTextWrap": true}, "index": "aE", "hasTextLink": false}, {"id": "p1x0016", "type": "text", "x": 29, "y": 477, "width": 347.9423828125, "height": 18.75, "angle": 0, "strokeColor": "#1e1e1e", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": null, "seed": 2129497365, "version": 5, "versionNonce": 314130302, "isDeleted": false, "boundElements": [], "updated": 1790000000000, "link": null, "locked": false, "text": "• ~7k lines of Go (incl. tests) · 5 packages · 14 test files · CI", "originalText": "• ~7k lines of Go (incl. tests) · 5 packages · 14 test files · CI", "fontSize": 15, "fontFamily": 5, "textAlign": "left", "verticalAlign": "middle", "containerId": "p1x0015", "lineHeight": 1.25, "autoResize": true, "baseline": 15, "index": "aF", "hasTextLink": false, "rawText": "• ~7k lines of Go (incl. tests) · 5 packages · 14 test files · CI", "labelPosition": null}, {"id": "p1x0017", "type": "rectangle", "x": 24, "y": 525.75, "width": 572, "height": 84.25, "angle": 0, "strokeColor": "#495057", "backgroundColor": "#ffffff", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": {"type": 3}, "seed": 1484771969, "version": 2, "versionNonce": 2086960153, "isDeleted": false, "boundElements": [{"type": "text", "id": "p1x0018"}], "updated": 1790443502223, "link": null, "locked": false, "customData": {"legacyTextWrap": true}, "index": "aG", "hasTextLink": false}, {"id": "p1x0018", "type": "text", "x": 29, "y": 539.75, "width": 424.89300537109375, "height": 56.25, "angle": 0, "strokeColor": "#1e1e1e", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": null, "seed": 939657386, "version": 4, "versionNonce": 606940031, "isDeleted": false, "boundElements": [], "updated": 1790000000000, "link": null, "locked": false, "text": "• Features: graph log with lanes, ref pills, --all toggle,\n  jump-style search (n/N), commit inspector + syntax-colored\n  diff popup, parent/child/HEAD jumps, mouse, ? help,\n  light/dark colors, 60s background fetch, zen mode", "originalText": "• Features: graph log with lanes, ref pills, --all toggle,\n  jump-style search (n/N), commit inspector + syntax-colored\n  diff popup, parent/child/HEAD jumps, mouse, ? help,\n  light/dark colors, 60s background fetch, zen mode", "fontSize": 15, "fontFamily": 5, "textAlign": "left", "verticalAlign": "middle", "containerId": "p1x0017", "lineHeight": 1.25, "autoResize": true, "baseline": 15, "index": "aH", "hasTextLink": false, "rawText": "• Features: graph log with lanes, ref pills, --all toggle,\n  jump-style search (n/N), commit inspector + syntax-colored\n  diff popup, parent/child/HEAD jumps, mouse, ? help,\n  light/dark colors, 60s background fetch, zen mode", "labelPosition": null}, {"id": "p1x0019", "type": "rectangle", "x": 24, "y": 626, "width": 572, "height": 65.5, "angle": 0, "strokeColor": "#495057", "backgroundColor": "#ffffff", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": {"type": 3}, "seed": 1244602539, "version": 2, "versionNonce": 42963193, "isDeleted": false, "boundElements": [{"type": "text", "id": "p1x0020"}], "updated": 1790443502223, "link": null, "locked": false, "customData": {"legacyTextWrap": true}, "index": "aI", "hasTextLink": false}, {"id": "p1x0020", "type": "text", "x": 29, "y": 640, "width": 406.6978759765625, "height": 37.5, "angle": 0, "strokeColor": "#1e1e1e", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": null, "seed": 1787479227, "version": 4, "versionNonce": 2086741655, "isDeleted": false, "boundElements": [], "updated": 1790000000000, "link": null, "locked": false, "text": "• Stack: Go 1.26 · bubbletea v1.3 · lipgloss v1.1 · bubbles\n  v1.0 · chroma v2 · x/ansi", "originalText": "• Stack: Go 1.26 · bubbletea v1.3 · lipgloss v1.1 · bubbles\n  v1.0 · chroma v2 · x/ansi", "fontSize": 15, "fontFamily": 5, "textAlign": "left", "verticalAlign": "middle", "containerId": "p1x0019", "lineHeight": 1.25, "autoResize": true, "baseline": 15, "index": "aJ", "hasTextLink": false, "rawText": "• Stack: Go 1.26 · bubbletea v1.3 · lipgloss v1.1 · bubbles\n  v1.0 · chroma v2 · x/ansi", "labelPosition": null}, {"id": "p1x0021", "type": "rectangle", "x": 24, "y": 707.5, "width": 572, "height": 46.75, "angle": 0, "strokeColor": "#495057", "backgroundColor": "#ffffff", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": {"type": 3}, "seed": 798461320, "version": 2, "versionNonce": 1078266329, "isDeleted": false, "boundElements": [{"type": "text", "id": "p1x0022"}], "updated": 1790443502223, "link": null, "locked": false, "customData": {"legacyTextWrap": true}, "index": "aK", "hasTextLink": false}, {"id": "p1x0022", "type": "text", "x": 29, "y": 721.5, "width": 300.1971130371094, "height": 18.75, "angle": 0, "strokeColor": "#1e1e1e", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": null, "seed": 519218417, "version": 3, "versionNonce": 570782073, "isDeleted": false, "boundElements": [], "updated": 1790443502349, "link": null, "locked": false, "text": "• Only runtime dependency: the git binary", "originalText": "• Only runtime dependency: the git binary", "fontSize": 15, "fontFamily": 5, "textAlign": "left", "verticalAlign": "middle", "containerId": "p1x0021", "lineHeight": 1.25, "autoResize": true, "baseline": 15, "index": "aL", "hasTextLink": false, "rawText": "", "labelPosition": null}, {"id": "p1x0023", "type": "rectangle", "x": 680, "y": 0, "width": 620, "height": 562.5, "angle": 0, "strokeColor": "#6741d9", "backgroundColor": "#f3f0ff", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "dashed", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": {"type": 3}, "seed": 1812935770, "version": 2, "versionNonce": 513304249, "isDeleted": false, "boundElements": [], "updated": 1790443502223, "link": null, "locked": false, "index": "aM", "hasTextLink": false}, {"id": "p1x0024", "type": "text", "x": 700, "y": 14, "width": 176.37271118164062, "height": 35, "angle": 0, "strokeColor": "#6741d9", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": null, "seed": 1302957854, "version": 2, "versionNonce": 43072855, "isDeleted": false, "boundElements": [], "updated": 1790443502223, "link": null, "locked": false, "text": "Where it sits", "originalText": "Where it sits", "fontSize": 28, "fontFamily": 5, "textAlign": "left", "verticalAlign": "top", "containerId": null, "lineHeight": 1.25, "autoResize": true, "baseline": 28, "index": "aN", "hasTextLink": false, "rawText": "", "labelPosition": null}, {"id": "p1x0025", "type": "rectangle", "x": 704, "y": 70, "width": 572, "height": 84.25, "angle": 0, "strokeColor": "#6741d9", "backgroundColor": "#ffffff", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": {"type": 3}, "seed": 2144743703, "version": 2, "versionNonce": 405612441, "isDeleted": false, "boundElements": [{"type": "text", "id": "p1x0026"}], "updated": 1790443502223, "link": null, "locked": false, "customData": {"legacyTextWrap": true}, "index": "aO", "hasTextLink": false}, {"id": "p1x0026", "type": "text", "x": 709, "y": 84, "width": 310.38043212890625, "height": 56.25, "angle": 0, "strokeColor": "#1e1e1e", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": null, "seed": 148287320, "version": 3, "versionNonce": 657119833, "isDeleted": false, "boundElements": [], "updated": 1790443502349, "link": null, "locked": false, "text": "git log --graph --all\n✓ always there\n✗ static, no navigation, no diff on demand", "originalText": "git log --graph --all\n✓ always there\n✗ static, no navigation, no diff on demand", "fontSize": 15, "fontFamily": 5, "textAlign": "left", "verticalAlign": "middle", "containerId": "p1x0025", "lineHeight": 1.25, "autoResize": true, "baseline": 15, "index": "aP", "hasTextLink": false, "rawText": "", "labelPosition": null}, {"id": "p1x0027", "type": "rectangle", "x": 704, "y": 170.25, "width": 572, "height": 84.25, "angle": 0, "strokeColor": "#6741d9", "backgroundColor": "#ffffff", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": {"type": 3}, "seed": 1042560228, "version": 2, "versionNonce": 121031801, "isDeleted": false, "boundElements": [{"type": "text", "id": "p1x0028"}], "updated": 1790443502223, "link": null, "locked": false, "customData": {"legacyTextWrap": true}, "index": "aQ", "hasTextLink": false}, {"id": "p1x0028", "type": "text", "x": 709, "y": 184.25, "width": 344.835693359375, "height": 56.25, "angle": 0, "strokeColor": "#1e1e1e", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": null, "seed": 1779465078, "version": 3, "versionNonce": 963651385, "isDeleted": false, "boundElements": [], "updated": 1790443502349, "link": null, "locked": false, "text": "gitk --all\n✓ great topology view\n✗ needs a GUI (Tk), dated, awkward over SSH", "originalText": "gitk --all\n✓ great topology view\n✗ needs a GUI (Tk), dated, awkward over SSH", "fontSize": 15, "fontFamily": 5, "textAlign": "left", "verticalAlign": "middle", "containerId": "p1x0027", "lineHeight": 1.25, "autoResize": true, "baseline": 15, "index": "aR", "hasTextLink": false, "rawText": "", "labelPosition": null}, {"id": "p1x0029", "type": "rectangle", "x": 704, "y": 270.5, "width": 572, "height": 84.25, "angle": 0, "strokeColor": "#6741d9", "backgroundColor": "#ffffff", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": {"type": 3}, "seed": 1576784850, "version": 2, "versionNonce": 863556953, "isDeleted": false, "boundElements": [{"type": "text", "id": "p1x0030"}], "updated": 1790443502223, "link": null, "locked": false, "customData": {"legacyTextWrap": true}, "index": "aS", "hasTextLink": false}, {"id": "p1x0030", "type": "text", "x": 709, "y": 284.5, "width": 385.9659423828125, "height": 56.25, "angle": 0, "strokeColor": "#1e1e1e", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": null, "seed": 371375482, "version": 3, "versionNonce": 1933105177, "isDeleted": false, "boundElements": [], "updated": 1790443502349, "link": null, "locked": false, "text": "lazygit\n✓ great keyboard UX\n✗ built for doing (stage, rebase); graph is secondary", "originalText": "lazygit\n✓ great keyboard UX\n✗ built for doing (stage, rebase); graph is secondary", "fontSize": 15, "fontFamily": 5, "textAlign": "left", "verticalAlign": "middle", "containerId": "p1x0029", "lineHeight": 1.25, "autoResize": true, "baseline": 15, "index": "aT", "hasTextLink": false, "rawText": "", "labelPosition": null}, {"id": "p1x0031", "type": "rectangle", "x": 704, "y": 370.75, "width": 572, "height": 84.25, "angle": 0, "strokeColor": "#6741d9", "backgroundColor": "#ffffff", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": {"type": 3}, "seed": 463561238, "version": 2, "versionNonce": 541508153, "isDeleted": false, "boundElements": [{"type": "text", "id": "p1x0032"}], "updated": 1790443502223, "link": null, "locked": false, "customData": {"legacyTextWrap": true}, "index": "aU", "hasTextLink": false}, {"id": "p1x0032", "type": "text", "x": 709, "y": 384.75, "width": 207.76473999023438, "height": 56.25, "angle": 0, "strokeColor": "#1e1e1e", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": null, "seed": 1689017786, "version": 3, "versionNonce": 1450732793, "isDeleted": false, "boundElements": [], "updated": 1790443502349, "link": null, "locked": false, "text": "tig\n✓ fast TUI log\n✗ basic graph, learning curve", "originalText": "tig\n✓ fast TUI log\n✗ basic graph, learning curve", "fontSize": 15, "fontFamily": 5, "textAlign": "left", "verticalAlign": "middle", "containerId": "p1x0031", "lineHeight": 1.25, "autoResize": true, "baseline": 15, "index": "aV", "hasTextLink": false, "rawText": "", "labelPosition": null}, {"id": "p1x0033", "type": "rectangle", "x": 704, "y": 471, "width": 572, "height": 65.5, "angle": 0, "strokeColor": "#6741d9", "backgroundColor": "#d0bfff", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": {"type": 3}, "seed": 2103217661, "version": 2, "versionNonce": 444863257, "isDeleted": false, "boundElements": [{"type": "text", "id": "p1x0034"}], "updated": 1790443502223, "link": null, "locked": false, "customData": {"legacyTextWrap": true}, "index": "aW", "hasTextLink": false}, {"id": "p1x0034", "type": "text", "x": 709, "y": 485, "width": 304.15716552734375, "height": 37.5, "angle": 0, "strokeColor": "#1e1e1e", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": null, "seed": 2015714665, "version": 3, "versionNonce": 1521640921, "isDeleted": false, "boundElements": [], "updated": 1790443502350, "link": null, "locked": false, "text": "lazytree = gitk's topology + lazygit's feel,\nbuilt only for understanding history", "originalText": "lazytree = gitk's topology + lazygit's feel,\nbuilt only for understanding history", "fontSize": 15, "fontFamily": 5, "textAlign": "left", "verticalAlign": "middle", "containerId": "p1x0033", "lineHeight": 1.25, "autoResize": true, "baseline": 15, "index": "aX", "hasTextLink": false, "rawText": "", "labelPosition": null}, {"id": "p1x0035", "type": "rectangle", "x": 1360, "y": 0, "width": 620, "height": 512.75, "angle": 0, "strokeColor": "#2f9e44", "backgroundColor": "#ebfbee", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "dashed", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": {"type": 3}, "seed": 1325123799, "version": 2, "versionNonce": 111429625, "isDeleted": false, "boundElements": [], "updated": 1790443502223, "link": null, "locked": false, "index": "aY", "hasTextLink": false}, {"id": "p1x0036", "type": "text", "x": 1380, "y": 14, "width": 125.72050476074219, "height": 35, "angle": 0, "strokeColor": "#2f9e44", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": null, "seed": 731644239, "version": 2, "versionNonce": 1520373783, "isDeleted": false, "boundElements": [], "updated": 1790443502223, "link": null, "locked": false, "text": "Principles", "originalText": "Principles", "fontSize": 28, "fontFamily": 5, "textAlign": "left", "verticalAlign": "top", "containerId": null, "lineHeight": 1.25, "autoResize": true, "baseline": 28, "index": "aZ", "hasTextLink": false, "rawText": "", "labelPosition": null}, {"id": "p1x0037", "type": "rectangle", "x": 1384, "y": 70, "width": 572, "height": 46.75, "angle": 0, "strokeColor": "#2f9e44", "backgroundColor": "#ffffff", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": {"type": 3}, "seed": 974688456, "version": 2, "versionNonce": 1856692441, "isDeleted": false, "boundElements": [{"type": "text", "id": "p1x0038"}], "updated": 1790443502223, "link": null, "locked": false, "customData": {"legacyTextWrap": true}, "index": "aa", "hasTextLink": false}, {"id": "p1x0038", "type": "text", "x": 1389, "y": 84, "width": 397.0827331542969, "height": 18.75, "angle": 0, "strokeColor": "#1e1e1e", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": null, "seed": 856916274, "version": 3, "versionNonce": 989479609, "isDeleted": false, "boundElements": [], "updated": 1790443502350, "link": null, "locked": false, "text": "1. Instant: first page shows fast, the rest streams in", "originalText": "1. Instant: first page shows fast, the rest streams in", "fontSize": 15, "fontFamily": 5, "textAlign": "left", "verticalAlign": "middle", "containerId": "p1x0037", "lineHeight": 1.25, "autoResize": true, "baseline": 15, "index": "ab", "hasTextLink": false, "rawText": "", "labelPosition": null}, {"id": "p1x0039", "type": "rectangle", "x": 1384, "y": 132.75, "width": 572, "height": 46.75, "angle": 0, "strokeColor": "#2f9e44", "backgroundColor": "#ffffff", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": {"type": 3}, "seed": 1737120420, "version": 2, "versionNonce": 1345019321, "isDeleted": false, "boundElements": [{"type": "text", "id": "p1x0040"}], "updated": 1790443502223, "link": null, "locked": false, "customData": {"legacyTextWrap": true}, "index": "ac", "hasTextLink": false}, {"id": "p1x0040", "type": "text", "x": 1389, "y": 146.75, "width": 312.002197265625, "height": 18.75, "angle": 0, "strokeColor": "#1e1e1e", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": null, "seed": 1517300987, "version": 3, "versionNonce": 66290585, "isDeleted": false, "boundElements": [], "updated": 1790443502350, "link": null, "locked": false, "text": "2. Complete by default: --all on at startup", "originalText": "2. Complete by default: --all on at startup", "fontSize": 15, "fontFamily": 5, "textAlign": "left", "verticalAlign": "middle", "containerId": "p1x0039", "lineHeight": 1.25, "autoResize": true, "baseline": 15, "index": "ad", "hasTextLink": false, "rawText": "", "labelPosition": null}, {"id": "p1x0041", "type": "rectangle", "x": 1384, "y": 195.5, "width": 572, "height": 65.5, "angle": 0, "strokeColor": "#2f9e44", "backgroundColor": "#ffffff", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": {"type": 3}, "seed": 1156546540, "version": 2, "versionNonce": 709443225, "isDeleted": false, "boundElements": [{"type": "text", "id": "p1x0042"}], "updated": 1790443502223, "link": null, "locked": false, "customData": {"legacyTextWrap": true}, "index": "ae", "hasTextLink": false}, {"id": "p1x0042", "type": "text", "x": 1389, "y": 209.5, "width": 405.5878601074219, "height": 37.5, "angle": 0, "strokeColor": "#1e1e1e", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": null, "seed": 1647934408, "version": 3, "versionNonce": 1641130105, "isDeleted": false, "boundElements": [], "updated": 1790443502350, "link": null, "locked": false, "text": "3. Never freeze: no git I/O inside View(); everything via\ntea.Cmd", "originalText": "3. Never freeze: no git I/O inside View(); everything via\ntea.Cmd", "fontSize": 15, "fontFamily": 5, "textAlign": "left", "verticalAlign": "middle", "containerId": "p1x0041", "lineHeight": 1.25, "autoResize": true, "baseline": 15, "index": "af", "hasTextLink": false, "rawText": "", "labelPosition": null}, {"id": "p1x0043", "type": "rectangle", "x": 1384, "y": 277, "width": 572, "height": 46.75, "angle": 0, "strokeColor": "#2f9e44", "backgroundColor": "#ffffff", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": {"type": 3}, "seed": 882552465, "version": 2, "versionNonce": 1270350713, "isDeleted": false, "boundElements": [{"type": "text", "id": "p1x0044"}], "updated": 1790443502223, "link": null, "locked": false, "customData": {"legacyTextWrap": true}, "index": "ag", "hasTextLink": false}, {"id": "p1x0044", "type": "text", "x": 1389, "y": 291, "width": 262.5018310546875, "height": 18.75, "angle": 0, "strokeColor": "#1e1e1e", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": null, "seed": 241047739, "version": 3, "versionNonce": 777531737, "isDeleted": false, "boundElements": [], "updated": 1790443502350, "link": null, "locked": false, "text": "4. Keyboard first: j/k, g/G, ctrl+u/d", "originalText": "4. Keyboard first: j/k, g/G, ctrl+u/d", "fontSize": 15, "fontFamily": 5, "textAlign": "left", "verticalAlign": "middle", "containerId": "p1x0043", "lineHeight": 1.25, "autoResize": true, "baseline": 15, "index": "ah", "hasTextLink": false, "rawText": "", "labelPosition": null}, {"id": "p1x0045", "type": "rectangle", "x": 1384, "y": 339.75, "width": 572, "height": 65.5, "angle": 0, "strokeColor": "#2f9e44", "backgroundColor": "#ffffff", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": {"type": 3}, "seed": 1566529389, "version": 2, "versionNonce": 1622879321, "isDeleted": false, "boundElements": [{"type": "text", "id": "p1x0046"}], "updated": 1790443502223, "link": null, "locked": false, "customData": {"legacyTextWrap": true}, "index": "ai", "hasTextLink": false}, {"id": "p1x0046", "type": "text", "x": 1389, "y": 353.75, "width": 390.2127685546875, "height": 37.5, "angle": 0, "strokeColor": "#1e1e1e", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": null, "seed": 1775539678, "version": 3, "versionNonce": 1054514745, "isDeleted": false, "boundElements": [], "updated": 1790443502350, "link": null, "locked": false, "text": "5. Read-only: can't lose work, safe to leave open; live\nfetch keeps it fresh", "originalText": "5. Read-only: can't lose work, safe to leave open; live\nfetch keeps it fresh", "fontSize": 15, "fontFamily": 5, "textAlign": "left", "verticalAlign": "middle", "containerId": "p1x0045", "lineHeight": 1.25, "autoResize": true, "baseline": 15, "index": "aj", "hasTextLink": false, "rawText": "", "labelPosition": null}, {"id": "p1x0047", "type": "rectangle", "x": 1384, "y": 421.25, "width": 572, "height": 65.5, "angle": 0, "strokeColor": "#2f9e44", "backgroundColor": "#ffffff", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": {"type": 3}, "seed": 1532401220, "version": 2, "versionNonce": 1093024057, "isDeleted": false, "boundElements": [{"type": "text", "id": "p1x0048"}], "updated": 1790443502223, "link": null, "locked": false, "customData": {"legacyTextWrap": true}, "index": "ak", "hasTextLink": false}, {"id": "p1x0048", "type": "text", "x": 1389, "y": 435.25, "width": 418.4607849121094, "height": 37.5, "angle": 0, "strokeColor": "#1e1e1e", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": null, "seed": 1486393353, "version": 3, "versionNonce": 1916563225, "isDeleted": false, "boundElements": [], "updated": 1790443502350, "link": null, "locked": false, "text": "6. Beautiful: lane colors, rounded arcs ╭╮╰╯, ref pills, zen\nmode", "originalText": "6. Beautiful: lane colors, rounded arcs ╭╮╰╯, ref pills, zen\nmode", "fontSize": 15, "fontFamily": 5, "textAlign": "left", "verticalAlign": "middle", "containerId": "p1x0047", "lineHeight": 1.25, "autoResize": true, "baseline": 15, "index": "al", "hasTextLink": false, "rawText": "", "labelPosition": null}, {"id": "p1x0049", "type": "rectangle", "x": 1360, "y": 562.75, "width": 620, "height": 387.25, "angle": 0, "strokeColor": "#e8590c", "backgroundColor": "#fff4e6", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "dashed", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": {"type": 3}, "seed": 1422224539, "version": 2, "versionNonce": 2120002073, "isDeleted": false, "boundElements": [], "updated": 1790443502223, "link": null, "locked": false, "index": "am", "hasTextLink": false}, {"id": "p1x0050", "type": "text", "x": 1380, "y": 576.75, "width": 375.7334899902344, "height": 35, "angle": 0, "strokeColor": "#e8590c", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": null, "seed": 120151619, "version": 2, "versionNonce": 581787639, "isDeleted": false, "boundElements": [], "updated": 1790443502223, "link": null, "locked": false, "text": "Non-goals & open questions", "originalText": "Non-goals & open questions", "fontSize": 28, "fontFamily": 5, "textAlign": "left", "verticalAlign": "top", "containerId": null, "lineHeight": 1.25, "autoResize": true, "baseline": 28, "index": "an", "hasTextLink": false, "rawText": "", "labelPosition": null}, {"id": "p1x0051", "type": "rectangle", "x": 1384, "y": 632.75, "width": 572, "height": 65.5, "angle": 0, "strokeColor": "#e8590c", "backgroundColor": "#ffffff", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": {"type": 3}, "seed": 761116572, "version": 2, "versionNonce": 827457273, "isDeleted": false, "boundElements": [{"type": "text", "id": "p1x0052"}], "updated": 1790443502223, "link": null, "locked": false, "customData": {"legacyTextWrap": true}, "index": "ao", "hasTextLink": false}, {"id": "p1x0052", "type": "text", "x": 1389, "y": 646.75, "width": 413.2510986328125, "height": 37.5, "angle": 0, "strokeColor": "#1e1e1e", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": null, "seed": 393425037, "version": 3, "versionNonce": 2129732601, "isDeleted": false, "boundElements": [], "updated": 1790443502350, "link": null, "locked": false, "text": "✗ Write operations (stage, commit, rebase): lazygit does\nthese", "originalText": "✗ Write operations (stage, commit, rebase): lazygit does\nthese", "fontSize": 15, "fontFamily": 5, "textAlign": "left", "verticalAlign": "middle", "containerId": "p1x0051", "lineHeight": 1.25, "autoResize": true, "baseline": 15, "index": "ap", "hasTextLink": false, "rawText": "", "labelPosition": null}, {"id": "p1x0053", "type": "rectangle", "x": 1384, "y": 714.25, "width": 572, "height": 46.75, "angle": 0, "strokeColor": "#e8590c", "backgroundColor": "#ffffff", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": {"type": 3}, "seed": 139410903, "version": 2, "versionNonce": 143243225, "isDeleted": false, "boundElements": [{"type": "text", "id": "p1x0054"}], "updated": 1790443502223, "link": null, "locked": false, "customData": {"legacyTextWrap": true}, "index": "aq", "hasTextLink": false}, {"id": "p1x0054", "type": "text", "x": 1389, "y": 728.25, "width": 370.45416259765625, "height": 18.75, "angle": 0, "strokeColor": "#1e1e1e", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": null, "seed": 357487891, "version": 3, "versionNonce": 16530649, "isDeleted": false, "boundElements": [], "updated": 1790443502350, "link": null, "locked": false, "text": "✗ Hosting features (PRs, issues) · ✗ a library API", "originalText": "✗ Hosting features (PRs, issues) · ✗ a library API", "fontSize": 15, "fontFamily": 5, "textAlign": "left", "verticalAlign": "middle", "containerId": "p1x0053", "lineHeight": 1.25, "autoResize": true, "baseline": 15, "index": "ar", "hasTextLink": false, "rawText": "", "labelPosition": null}, {"id": "p1x0055", "type": "rectangle", "x": 1384, "y": 777, "width": 572, "height": 65.5, "angle": 0, "strokeColor": "#e8590c", "backgroundColor": "#ffd8a8", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": {"type": 3}, "seed": 1945614991, "version": 2, "versionNonce": 370627769, "isDeleted": false, "boundElements": [{"type": "text", "id": "p1x0056"}], "updated": 1790443502223, "link": null, "locked": false, "customData": {"legacyTextWrap": true}, "index": "as", "hasTextLink": false}, {"id": "p1x0056", "type": "text", "x": 1389, "y": 791, "width": 439.21820068359375, "height": 37.5, "angle": 0, "strokeColor": "#1e1e1e", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": null, "seed": 1207730539, "version": 3, "versionNonce": 1206991289, "isDeleted": false, "boundElements": [], "updated": 1790443502350, "link": null, "locked": false, "text": "? Allow light actions (copy hash, checkout, $EDITOR) while\nstaying mostly read-only?", "originalText": "? Allow light actions (copy hash, checkout, $EDITOR) while\nstaying mostly read-only?", "fontSize": 15, "fontFamily": 5, "textAlign": "left", "verticalAlign": "middle", "containerId": "p1x0055", "lineHeight": 1.25, "autoResize": true, "baseline": 15, "index": "at", "hasTextLink": false, "rawText": "", "labelPosition": null}, {"id": "p1x0057", "type": "rectangle", "x": 1384, "y": 858.5, "width": 572, "height": 65.5, "angle": 0, "strokeColor": "#e8590c", "backgroundColor": "#ffd8a8", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": {"type": 3}, "seed": 1153807479, "version": 2, "versionNonce": 1570657689, "isDeleted": false, "boundElements": [{"type": "text", "id": "p1x0058"}], "updated": 1790443502223, "link": null, "locked": false, "customData": {"legacyTextWrap": true}, "index": "au", "hasTextLink": false}, {"id": "p1x0058", "type": "text", "x": 1389, "y": 872.5, "width": 431.4030456542969, "height": 37.5, "angle": 0, "strokeColor": "#1e1e1e", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null, "roundness": null, "seed": 792894694, "version": 3, "versionNonce": 1693686425, "isDeleted": false, "boundElements": [], "updated": 1790443502350, "link": null, "locked": false, "text": "? Popup diff vs split view on wide terminals? README says\nresponsive; code always uses the popup", "originalText": "? Popup diff vs split view on wide terminals? README says\nresponsive; code always uses the popup", "fontSize": 15, "fontFamily": 5, "textAlign": "left", "verticalAlign": "middle", "containerId": "p1x0057", "lineHeight": 1.25, "autoResize": true, "baseline": 15, "index": "av", "hasTextLink": false, "rawText": "", "labelPosition": null}], "appState": {"theme": "light", "viewBackgroundColor": "#ffffff", "currentItemStrokeColor": "#1e1e1e", "currentItemBackgroundColor": "transparent", "currentItemFillStyle": "solid", "currentItemStrokeWidthKey": "medium", "currentItemStrokeVariability": "constant", "currentItemStrokeStyle": "solid", "currentItemRoughness": 1, "currentItemOpacity": 100, "currentItemFontFamily": 5, "currentItemFontSize": 20, "currentItemTextAlign": "left", "currentItemStartArrowhead": null, "currentItemEndArrowhead": "arrow", "currentItemArrowType": "round", "currentItemFrameRole": null, "scrollX": 52.105319268020935, "scrollY": 333.79883369491637, "zoom": {"value": 0.938005}, "currentItemRoundness": "round", "gridSize": null, "gridStep": 5, "gridModeEnabled": false, "gridColor": {"Bold": "rgba(179, 179, 179, 0.5)", "Regular": "rgba(204, 204, 204, 0.5)"}, "colorTopPicks": {"elementStroke": null, "elementBackground": null, "bucketFill": null}, "currentStrokeOptions": null, "frameRendering": {"enabled": true, "clip": true, "name": true, "outline": true, "markerName": true, "markerEnabled": true}, "objectsSnapModeEnabled": false, "activeTool": {"type": "selection", "customType": null, "locked": false, "fromSelection": false, "lastActiveTool": null}, "disableContextMenu": false, "bindingPreference": "enabled", "isMidpointSnappingEnabled": true, "boxSelectionMode": "contain"}, "files": {}}
+```compressed-json
+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
 ```
 %%

@@ -25,8 +25,34 @@ git config user.name "Demo User"
 export GIT_AUTHOR_DATE GIT_COMMITTER_DATE
 t=$(date -d '-6 weeks' +%s 2>/dev/null || date -v-6w +%s)
 
+n=0
+# Every commit adds a small, real-looking Go file so the diff pane and the
+# commit inspector have something to show (and syntax-highlight).
 commit() {
 	t=$((t + 3600))
+	n=$((n + 1))
+	mkdir -p pkg
+	cat >"pkg/handler$n.go" <<GO
+package pkg
+
+import (
+	"context"
+	"errors"
+	"strings"
+)
+
+// Handle$n implements: $1
+func Handle$n(ctx context.Context, input string) (string, error) {
+	if input == "" {
+		return "", errors.New("empty input")
+	}
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
+	return strings.ToUpper(input), nil
+}
+GO
+	git add -A
 	GIT_AUTHOR_DATE="@$t" GIT_COMMITTER_DATE="@$t" git commit -q --allow-empty -m "$1"
 }
 

@@ -633,7 +633,7 @@ func (m AppModel) commitAction(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 const (
 	splitMinWidthAuto   = 140 // "auto" layout splits at this terminal width
 	splitMinWidthForced = 100 // an explicit "split" still needs this much room
-	splitLogPct         = 45  // share of the width the log gets in split view
+	splitLogPct         = 55  // share of the width the log gets in split view
 )
 
 // splitActive reports whether the diff is shown in a permanent right-hand

@@ -36,3 +36,6 @@ CLAUDE.md
 
 # Build
 lazytree
+dist/
+vault-preview/
+__pycache__/

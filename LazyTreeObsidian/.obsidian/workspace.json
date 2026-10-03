@@ -4,19 +4,19 @@
     "type": "split",
     "children": [
       {
-        "id": "33448a21601cedff",
+        "id": "2743675a8d42d73d",
         "type": "tabs",
         "children": [
           {
-            "id": "b872107667726213",
+            "id": "c35e2be5e2fa2fb7",
             "type": "leaf",
             "state": {
               "type": "excalidraw",
               "state": {
-                "file": "Overview/06 Roadmap.md"
+                "file": "BaseOverview.md"
               },
               "icon": "excalidraw-icon",
-              "title": "06 Roadmap"
+              "title": "BaseOverview"
             }
           }
         ]
@@ -184,11 +184,27 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "b872107667726213",
+  "active": "c35e2be5e2fa2fb7",
   "lastOpenFiles": [
+    "Overview/14 Glossary.md",
+    "Overview/01 Idea & Vision.md",
+    "assets/demo.gif",
+    "assets/zen-dark.png",
+    "assets/split-light.png",
+    "assets/split-dark.png",
+    "assets/search-dark.png",
+    "assets/popup-dark.png",
+    "assets/help-dark.png",
+    "Overview/13 Release & Tooling.md",
+    "Overview/12 Testing & Quality.md",
+    "Overview/11 Configuration.md",
+    "Overview/10 Search & Navigation.md",
+    "Overview/08 Graph Algorithm.md",
+    "Overview/07 Data Model.md",
+    "Overview/09 UI Guide.md",
+    "assets",
     "Overview/06 Roadmap.md",
     "Overview/05 Missing & Risks.md",
-    "Overview/01 Idea & Vision.md",
     "BaseOverview.md",
     "Overview/02 Architecture.md",
     "Overview/03 Runtime & Message Flow.md",
@@ -208,7 +224,6 @@
     "Overview/06 Roadmap.md.tmp.27433.36f1980e3be9",
     "Overview/05 Missing & Risks.md.tmp.27433.8e4f050d3485",
     "Overview/04 Design Choices.md.tmp.27433.a3825e075c64",
-    "Overview/03 Runtime & Message Flow.md.tmp.27433.8ca6b8c71bcc",
     "Welcome.md"
   ]
 }
