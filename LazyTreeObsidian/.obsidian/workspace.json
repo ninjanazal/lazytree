@@ -1,0 +1,227 @@
+{
+  "main": {
+    "id": "755aee3ee3578bd5",
+    "type": "split",
+    "children": [
+      {
+        "id": "5d5795915e049164",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "b6a1278feaa691f5",
+            "type": "leaf",
+            "state": {
+              "type": "empty",
+              "state": {},
+              "icon": "lucide-file",
+              "title": "New tab"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "f1f445aa2234ad8a",
+    "type": "split",
+    "children": [
+      {
+        "id": "95a5af2546a4851a",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "f008c62c1bec25ea",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "346efeacd6266736",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "7a75de6759bf62e3",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 286.5
+  },
+  "right": {
+    "id": "04ea418875986acf",
+    "type": "split",
+    "children": [
+      {
+        "id": "a06d3a80342127ec",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "f983ad993a60275b",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "Welcome.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks for Welcome"
+            }
+          },
+          {
+            "id": "3ebf3a3372eb6b94",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "Welcome.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links from Welcome"
+            }
+          },
+          {
+            "id": "b8e5594abfee3c19",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "8629c884ddfd2ed3",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "60a911217a3f0569",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "Welcome.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline of Welcome"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false,
+      "obsidian-excalidraw-plugin:New drawing": false
+    }
+  },
+  "active": "f008c62c1bec25ea",
+  "lastOpenFiles": [
+    "Overview/14 Glossary.md",
+    "Overview/01 Idea & Vision.md",
+    "assets/demo.gif",
+    "assets/zen-dark.png",
+    "assets/split-light.png",
+    "assets/split-dark.png",
+    "assets/search-dark.png",
+    "assets/popup-dark.png",
+    "assets/help-dark.png",
+    "Overview/13 Release & Tooling.md",
+    "Overview/12 Testing & Quality.md",
+    "Overview/11 Configuration.md",
+    "Overview/10 Search & Navigation.md",
+    "Overview/08 Graph Algorithm.md",
+    "Overview/07 Data Model.md",
+    "Overview/09 UI Guide.md",
+    "assets",
+    "Overview/06 Roadmap.md",
+    "Overview/05 Missing & Risks.md",
+    "BaseOverview.md",
+    "Overview/02 Architecture.md",
+    "Overview/03 Runtime & Message Flow.md",
+    "Overview/04 Design Choices.md",
+    "Overview/06 Roadmap.md.tmp.132637.85ff5008f3b8",
+    "Overview/05 Missing & Risks.md.tmp.132637.a1caf080abea",
+    "Overview/06 Roadmap.md.tmp.132637.200a0c8afa28",
+    "Overview/05 Missing & Risks.md.tmp.132637.17f895393d92",
+    "Overview/06 Roadmap.md.tmp.132637.d27416be93c8",
+    "06 Roadmap.md",
+    "05 Missing & Risks.md",
+    "04 Design Choices.md",
+    "03 Runtime & Message Flow.md",
+    "02 Architecture.md",
+    "01 Idea & Vision.md",
+    "Overview/05 Missing & Risks.md.tmp.27433.3a2c5e0f3d9b",
+    "Overview/06 Roadmap.md.tmp.27433.36f1980e3be9",
+    "Overview/05 Missing & Risks.md.tmp.27433.8e4f050d3485",
+    "Overview/04 Design Choices.md.tmp.27433.a3825e075c64",
+    "Welcome.md"
+  ]
+}
