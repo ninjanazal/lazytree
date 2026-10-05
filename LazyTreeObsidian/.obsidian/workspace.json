@@ -4,11 +4,11 @@
     "type": "split",
     "children": [
       {
-        "id": "243aef10a1e90550",
+        "id": "4faf2d1fad08a75a",
         "type": "tabs",
         "children": [
           {
-            "id": "a457f963b41854ea",
+            "id": "be8281cd5ad720c2",
             "type": "leaf",
             "state": {
               "type": "excalidraw",
@@ -17,18 +17,6 @@
               },
               "icon": "excalidraw-icon",
               "title": "BaseOverview"
-            }
-          },
-          {
-            "id": "c1140d205ddbedf9",
-            "type": "leaf",
-            "state": {
-              "type": "excalidraw",
-              "state": {
-                "file": "Overview/06 Roadmap.md"
-              },
-              "icon": "excalidraw-icon",
-              "title": "06 Roadmap"
             }
           }
         ]
@@ -197,7 +185,7 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "a457f963b41854ea",
+  "active": "be8281cd5ad720c2",
   "lastOpenFiles": [
     "Overview/06 Roadmap.md",
     "BaseOverview.md",

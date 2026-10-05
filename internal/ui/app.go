@@ -756,7 +756,11 @@ func (m AppModel) updateLogKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keys.Bottom):
 		m.log.moveBottom()
 	case key.Matches(msg, keys.Parent):
-		m.log.jumpToParent()
+		_, cmd := m.jumpToParent(0)
+		return m, cmd
+	case key.Matches(msg, keys.NthParent):
+		_, cmd := m.jumpToParent(parentIndex(msg))
+		return m, cmd
 	case key.Matches(msg, keys.Child):
 		m.log.jumpToChild()
 	case key.Matches(msg, keys.Head):
@@ -792,11 +796,9 @@ func (m AppModel) updatePopupKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keys.Bottom):
 		m.diff.viewport.GotoBottom()
 	case key.Matches(msg, keys.Parent):
-		// Follow the parent link from inside the inspector: the log
-		// selection moves and the popup loads that commit's diff.
-		if m.log.jumpToParent() {
-			return m, m.diffCmdIfChanged()
-		}
+		return m.popupJumpToParent(0)
+	case key.Matches(msg, keys.NthParent):
+		return m.popupJumpToParent(parentIndex(msg))
 	case key.Matches(msg, keys.Child):
 		if m.log.jumpToChild() {
 			return m, m.diffCmdIfChanged()
@@ -956,4 +958,25 @@ func (m AppModel) View() string {
 	}
 
 	return base
+}
+
+// jumpToParent moves the log cursor to parent n (0-based) of the selected
+// commit. When it can't, the returned command flashes the reason.
+func (m *AppModel) jumpToParent(n int) (bool, tea.Cmd) {
+	if m.log.jumpToNthParent(n) {
+		return true, nil
+	}
+	if why := m.log.parentMiss(n); why != "" {
+		return false, m.flash(why)
+	}
+	return false, nil
+}
+
+// popupJumpToParent follows a parent link from inside the inspector: the
+// log selection moves and the popup loads that commit's diff.
+func (m AppModel) popupJumpToParent(n int) (tea.Model, tea.Cmd) {
+	if ok, cmd := m.jumpToParent(n); !ok {
+		return m, cmd
+	}
+	return m, m.diffCmdIfChanged()
 }

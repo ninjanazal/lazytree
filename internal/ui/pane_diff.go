@@ -229,7 +229,7 @@ func (p *diffPane) View(focused bool) string {
 	}
 
 	title := styleTitle.Render(" "+shortHash) + "  " +
-		styleHelp.Render(firstKey(keys.Down)+"/"+firstKey(keys.Up)+" scroll · "+firstKey(keys.Parent)+" parent · "+firstKey(keys.Child)+" child · "+firstKey(keys.Back)+" close")
+		styleHelp.Render(firstKey(keys.Down)+"/"+firstKey(keys.Up)+" scroll · "+firstKey(keys.Parent)+" parent · "+keys.NthParent.Help().Key+" nth parent · "+firstKey(keys.Child)+" child · "+firstKey(keys.Back)+" close")
 	content := title + "\n" + p.viewport.View()
 
 	return pane.
@@ -273,6 +273,10 @@ func (p *diffPane) renderHeader() string {
 		short := make([]string, len(c.Parents))
 		for i, h := range c.Parents {
 			short[i] = h[:min(len(h), 8)]
+			if len(c.Parents) > 1 && i < 9 {
+				// A merge: number the parents so 1-9 can jump to them.
+				short[i] = fmt.Sprintf("%d:%s", i+1, short[i])
+			}
 		}
 		sb.WriteString(label("parents") + styleHash.Render(strings.Join(short, " ")) + "\n")
 	}

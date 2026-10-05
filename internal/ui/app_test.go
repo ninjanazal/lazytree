@@ -584,6 +584,7 @@ func TestApplyKeys(t *testing.T) {
 		"empty list":     {"zen": {}},
 		"empty key":      {"zen": {""}},
 		"conflict":       {"zen": {"q"}}, // q is quit
+		"reserved digit": {"zen": {"2"}}, // 1-9 jump to the nth parent
 	} {
 		if err := ApplyKeys(ov); err == nil {
 			t.Errorf("%s: expected an error", name)
@@ -731,5 +732,68 @@ func TestApp_SplitViewMouse(t *testing.T) {
 	}
 	if m.log.cursor != m.log.rowAtLine(1) {
 		t.Errorf("click in the log should still select a row, cursor=%d", m.log.cursor)
+	}
+}
+
+func newMergeTestApp(t *testing.T) AppModel {
+	t.Helper()
+	m := newSizedTestApp(t, 80, 24)
+	commits := []model.Commit{
+		{Hash: "d", Subject: "merge", Parents: []string{"b", "c"}},
+		{Hash: "c", Subject: "side", Parents: []string{"a"}},
+		{Hash: "b", Subject: "main", Parents: []string{"a"}},
+		{Hash: "a", Subject: "root", Parents: []string{"notloaded"}},
+	}
+	m.log.setCommits(commits, graph.Layout(commits))
+	m.log.setCursor(0, 0)
+	return m
+}
+
+func TestNthParentKeysInLog(t *testing.T) {
+	m := newMergeTestApp(t)
+
+	updated, _ := m.Update(keyMsg("2"))
+	m = updated.(AppModel)
+	if got := m.log.commits[m.log.cursor].Hash; got != "c" {
+		t.Fatalf("2 should jump to the second parent c, got %s", got)
+	}
+	if m.flashText != "" {
+		t.Errorf("a successful jump should not flash, got %q", m.flashText)
+	}
+
+	// c has one parent: 3 can't jump and says why.
+	updated, cmd := m.Update(keyMsg("3"))
+	m = updated.(AppModel)
+	if got := m.log.commits[m.log.cursor].Hash; got != "c" || cmd == nil || !strings.Contains(m.flashText, "no parent 3") {
+		t.Errorf("missing parent: cursor=%s flash=%q cmd=%v", got, m.flashText, cmd != nil)
+	}
+
+	// a's parent hasn't streamed in yet.
+	m.log.setCursor(3, 0)
+	updated, _ = m.Update(keyMsg("p"))
+	if f := updated.(AppModel).flashText; !strings.Contains(f, "not loaded") {
+		t.Errorf("unloaded parent should flash, got %q", f)
+	}
+}
+
+func TestNthParentKeysInPopup(t *testing.T) {
+	m := newMergeTestApp(t)
+	m.popupOpen = true
+
+	updated, cmd := m.Update(keyMsg("2"))
+	m = updated.(AppModel)
+	if got := m.log.commits[m.log.cursor].Hash; got != "c" {
+		t.Fatalf("2 should jump to the second parent c, got %s", got)
+	}
+	if cmd == nil {
+		t.Error("jumping inside the popup must load the new commit's diff")
+	}
+	if !m.popupOpen {
+		t.Error("the popup should stay open after a jump")
+	}
+	updated, _ = m.Update(keyMsg("9"))
+	m = updated.(AppModel)
+	if got := m.log.commits[m.log.cursor].Hash; got != "c" || !strings.Contains(m.flashText, "no parent 9") {
+		t.Errorf("a missing parent must not move the cursor and must flash, got %s %q", got, m.flashText)
 	}
 }

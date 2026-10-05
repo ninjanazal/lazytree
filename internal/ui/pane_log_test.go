@@ -418,3 +418,33 @@ func TestApplyColors(t *testing.T) {
 		t.Errorf("lane palette not applied: %+v", graph.LanePalette)
 	}
 }
+
+func TestLogPane_JumpToNthParent(t *testing.T) {
+	p := newTestLogPane() // d(merge b,c) c b(parent a) a
+	p.setCursor(0, 0)
+
+	if !p.jumpToNthParent(1) || p.commits[p.cursor].Hash != "c" {
+		t.Fatalf("second parent of the merge is c, cursor=%d", p.cursor)
+	}
+	p.setCursor(0, 0)
+	if p.jumpToNthParent(2) || p.cursor != 0 {
+		t.Error("a two-parent merge has no third parent")
+	}
+	if !p.jumpToNthParent(0) || p.commits[p.cursor].Hash != "b" {
+		t.Fatalf("first parent is b, cursor=%d", p.cursor)
+	}
+}
+
+func TestLogPane_JumpToNthParentAbove(t *testing.T) {
+	// Clock skew: git log (date order) lists the side parent c above d.
+	p := newTestLogPane()
+	p.commits = []model.Commit{
+		{Hash: "c", Subject: "side"},
+		{Hash: "d", Subject: "merge", Parents: []string{"b", "c"}},
+		{Hash: "b", Subject: "main"},
+	}
+	p.setCursor(1, 0)
+	if !p.jumpToNthParent(1) || p.commits[p.cursor].Hash != "c" {
+		t.Fatalf("a parent listed above its child must still be found, cursor=%d", p.cursor)
+	}
+}
