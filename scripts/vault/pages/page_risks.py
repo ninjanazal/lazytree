@@ -20,7 +20,7 @@ def build():
              "Whole graph re-rendered every frame → cached rows",
              "O(n²) paging with --skip → one streaming git log",
              "Cursor could leave the screen on branchy history → line-based scrolling",
-             "Rows overflowed narrow terminals → everything clipped to width",
+             "Rows overflowed narrow terminals → everything clipped to width; below 24×10 a “too small” message",
              "macOS-only symlinked temp dir broke a test → caught by the Docker symlink re-run"]
     for i, f in enumerate(fixed):
         s.text(0 + (i % 2) * 860, 600 + (i // 2) * 40, "✔ " + f, size=15, color=INK)
@@ -30,7 +30,6 @@ def build():
             ["Syntax colours", "Tokenised per line, so block comments may mis-colour", "low", "highlight whole hunks"],
             ["Background fetch", "Uses the network; auth failures are silent (non-interactive)", "low", "fetch_interval = \"off\""],
             ["Theme detection", "Some terminals don't report their background", "low", "theme = light | dark"],
-            ["Tiny terminals", "Below ~24×10 the layout can overflow", "low", "M7: minimum size message"],
             ["macOS", "Emulated (Docker symlink re-run), not run natively", "medium", "M7: native smoke test"],
             ["Search", "In-memory search only covers loaded commits", "low", "use g: / s: / p: for everything"]]
     s.table(0, 880, [220, 640, 140, 700], rows, "red", size=15)

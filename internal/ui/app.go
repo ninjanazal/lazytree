@@ -359,12 +359,23 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		if tooSmall(m.width, m.height) {
+			// The UI is hidden: only quitting is allowed, so no key can
+			// change state (or launch $EDITOR) the user can't see.
+			if key.Matches(msg, keys.Quit) {
+				return m, tea.Quit
+			}
+			return m, nil
+		}
 		if m.mode == modeSearch {
 			return m.followSelection(m.updateSearch(msg))
 		}
 		return m.followSelection(m.updateKeys(msg))
 
 	case tea.MouseMsg:
+		if tooSmall(m.width, m.height) {
+			return m, nil
+		}
 		return m.followSelection(m.updateMouse(msg))
 
 	case tea.WindowSizeMsg:
@@ -904,6 +915,9 @@ func (m AppModel) searchStatus() string {
 func (m AppModel) View() string {
 	if m.width == 0 {
 		return ""
+	}
+	if tooSmall(m.width, m.height) {
+		return tooSmallView(m.width, m.height)
 	}
 
 	if m.mode == modeZen {

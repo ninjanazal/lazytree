@@ -8,54 +8,6 @@
         "type": "tabs",
         "children": [
           {
-            "id": "c1140d205ddbedf9",
-            "type": "leaf",
-            "state": {
-              "type": "excalidraw",
-              "state": {
-                "file": "Overview/06 Roadmap.md"
-              },
-              "icon": "excalidraw-icon",
-              "title": "06 Roadmap"
-            }
-          },
-          {
-            "id": "8c853e8ce72836b3",
-            "type": "leaf",
-            "state": {
-              "type": "excalidraw",
-              "state": {
-                "file": "Overview/14 Glossary.md"
-              },
-              "icon": "excalidraw-icon",
-              "title": "14 Glossary"
-            }
-          },
-          {
-            "id": "a9b6563b1551d329",
-            "type": "leaf",
-            "state": {
-              "type": "excalidraw",
-              "state": {
-                "file": "Overview/14 Glossary.md"
-              },
-              "icon": "excalidraw-icon",
-              "title": "14 Glossary"
-            }
-          },
-          {
-            "id": "4a2d61e4ac4d21e4",
-            "type": "leaf",
-            "state": {
-              "type": "excalidraw",
-              "state": {
-                "file": "Overview/13 Release & Tooling.md"
-              },
-              "icon": "excalidraw-icon",
-              "title": "13 Release & Tooling"
-            }
-          },
-          {
             "id": "a457f963b41854ea",
             "type": "leaf",
             "state": {
@@ -66,9 +18,20 @@
               "icon": "excalidraw-icon",
               "title": "BaseOverview"
             }
+          },
+          {
+            "id": "c1140d205ddbedf9",
+            "type": "leaf",
+            "state": {
+              "type": "excalidraw",
+              "state": {
+                "file": "Overview/06 Roadmap.md"
+              },
+              "icon": "excalidraw-icon",
+              "title": "06 Roadmap"
+            }
           }
-        ],
-        "currentTab": 4
+        ]
       }
     ],
     "direction": "vertical"
@@ -127,7 +90,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 286.5
+    "width": 286.5,
+    "collapsed": true
   },
   "right": {
     "id": "04ea418875986acf",
@@ -235,10 +199,10 @@
   },
   "active": "a457f963b41854ea",
   "lastOpenFiles": [
-    "Overview/13 Release & Tooling.md",
-    "Overview/14 Glossary.md",
     "Overview/06 Roadmap.md",
     "BaseOverview.md",
+    "Overview/13 Release & Tooling.md",
+    "Overview/14 Glossary.md",
     "Overview/01 Idea & Vision.md",
     "Overview/07 Data Model.md",
     "Overview/10 Search & Navigation.md",

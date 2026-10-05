@@ -31,7 +31,7 @@ func realisticCommits() []model.Commit {
 // checks nothing panics and each frame fits the terminal exactly: no line
 // wider than the terminal, no more lines than its height.
 func TestNarrowTerminals(t *testing.T) {
-	sizes := [][2]int{{24, 10}, {30, 10}, {40, 12}, {60, 15}, {80, 24}, {99, 30}, {160, 40}, {220, 50}}
+	sizes := [][2]int{{minWidth, minHeight}, {30, 10}, {40, 12}, {60, 15}, {80, 24}, {99, 30}, {160, 40}, {220, 50}}
 	for _, sz := range sizes {
 		w, h := sz[0], sz[1]
 		m := NewApp(&git.Runner{RepoPath: "."})

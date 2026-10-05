@@ -14,7 +14,7 @@ MS = [
 MUST = [
     ("Safe background fetch", "Fetch runs with GIT_TERMINAL_PROMPT=0 and ssh BatchMode, so a credential prompt can never hang or corrupt the UI.", True),
     ("Jumpable parents", "The parent hashes in the inspector header can be selected and jumped to. This is the last open M3 item.", False),
-    ("Too-small terminal message", "Below the minimum size, show “terminal too small” instead of a broken layout.", False),
+    ("Too-small terminal message", "Below the minimum size, show “terminal too small” instead of a broken layout.", True),
     ("Stability contract", "Freeze the config keys, [keys] action names, [colors] names and CLI. Golden tests for ActionNames() and PaletteNames(), plus a README “Compatibility” section.", False),
     ("CHANGELOG.md", "A history people can read, seeded from the release notes. Release docs and examples use v1.0.0.", False),
     ("Native macOS smoke test", "Run the real binary once on a Mac: clipboard, $EDITOR, theme detection.", False),
