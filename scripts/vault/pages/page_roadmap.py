@@ -3,7 +3,7 @@ from common import *
 MS = [
     ("M1", "Robustness", "Works everywhere", "red", True, ["ResolveRepo via rev-parse (worktrees, submodules, bare)", "git's stderr in every error", "non-fatal errors as a footer banner", "tests: ParseDiff, classifyRef, repo detection"]),
     ("M2", "Performance", "Large repos", "orange", True, ["cached graph lines + column widths", "incremental Layouter", "refs once per load; reload only if changed", "streaming git log instead of --skip", "measured on 108k commits (make perf)"]),
-    ("M3", "Understand a commit", "Inspect", "yellow", True, ["inspector header: hash, people, parents, refs, body", "file summary with +/- counts", "line numbers, binary files, renames", "syntax highlighting (chroma)", "32-entry LRU diff cache", "p / c follow parent / child"]),
+    ("M3", "Understand a commit", "Inspect", "yellow", True, ["inspector header: hash, people, parents, refs, body", "file summary with +/- counts", "line numbers, binary files, renames", "syntax highlighting (chroma)", "32-entry LRU diff cache", "p / c follow parent / child", "1-9 jump to the nth parent of a merge"]),
     ("M4", "Navigate & search", "Find things", "green", True, ["? help overlay from the key map", "highlights + n / N; bodies & refs searched", "g: s: p: git-side search", "H jump to HEAD", "mouse wheel + click"]),
     ("M5", "Actions & config", "Light touch", "blue", True, ["y copy hash · o open in $EDITOR", "config file: fetch, theme, layout", "[keys] remap · [colors] palette", "t / r ref filters + hide_refs", "split view"]),
     ("M6", "Ship it", "Release tooling", "purple", True, ["local checks: make check + docker-matrix", "goreleaser archives (make dist)", "make release: tag + files + notes", "README with screenshots + GIF"]),
@@ -13,7 +13,7 @@ MS = [
 # (title, why it matters for 1.0, done?)
 MUST = [
     ("Safe background fetch", "Fetch runs with GIT_TERMINAL_PROMPT=0 and ssh BatchMode, so a credential prompt can never hang or corrupt the UI.", True),
-    ("Jumpable parents", "The parent hashes in the inspector header can be selected and jumped to. This is the last open M3 item.", False),
+    ("Jumpable parents", "Merge parents are numbered in the inspector header; 1-9 jump to that parent, in the log and inside the diff. Closes M3.", True),
     ("Too-small terminal message", "Below the minimum size, show “terminal too small” instead of a broken layout.", True),
     ("Stability contract", "Freeze the config keys, [keys] action names, [colors] names and CLI. Golden tests for ActionNames() and PaletteNames(), plus a README “Compatibility” section.", False),
     ("CHANGELOG.md", "A history people can read, seeded from the release notes. Release docs and examples use v1.0.0.", False),

@@ -10,29 +10,30 @@ import (
 )
 
 type keyMap struct {
-	Up       key.Binding
-	Down     key.Binding
-	PageUp   key.Binding
-	PageDown key.Binding
-	Top      key.Binding
-	Bottom   key.Binding
-	Enter    key.Binding
-	Back     key.Binding
-	Search   key.Binding
-	Toggle   key.Binding
-	Zen      key.Binding
-	Help     key.Binding
-	NextHit  key.Binding
-	PrevHit  key.Binding
-	Parent   key.Binding
-	Child    key.Binding
-	Head     key.Binding
-	Copy     key.Binding
-	Edit     key.Binding
-	Tags     key.Binding
-	Split    key.Binding
-	Remotes  key.Binding
-	Quit     key.Binding
+	Up        key.Binding
+	Down      key.Binding
+	PageUp    key.Binding
+	PageDown  key.Binding
+	Top       key.Binding
+	Bottom    key.Binding
+	Enter     key.Binding
+	Back      key.Binding
+	Search    key.Binding
+	Toggle    key.Binding
+	Zen       key.Binding
+	Help      key.Binding
+	NextHit   key.Binding
+	PrevHit   key.Binding
+	Parent    key.Binding
+	NthParent key.Binding
+	Child     key.Binding
+	Head      key.Binding
+	Copy      key.Binding
+	Edit      key.Binding
+	Tags      key.Binding
+	Split     key.Binding
+	Remotes   key.Binding
+	Quit      key.Binding
 }
 
 var keys = keyMap{
@@ -96,6 +97,10 @@ var keys = keyMap{
 		key.WithKeys("p"),
 		key.WithHelp("p", "parent commit"),
 	),
+	NthParent: key.NewBinding(
+		key.WithKeys("1", "2", "3", "4", "5", "6", "7", "8", "9"),
+		key.WithHelp("1-9", "nth parent (merges)"),
+	),
 	Child: key.NewBinding(
 		key.WithKeys("c"),
 		key.WithHelp("c", "child commit"),
@@ -141,7 +146,7 @@ type helpGroup struct {
 // the keys the app actually handles.
 func (k keyMap) helpGroups() []helpGroup {
 	return []helpGroup{
-		{"Navigate", []key.Binding{k.Down, k.Up, k.PageDown, k.PageUp, k.Top, k.Bottom, k.Head, k.Parent, k.Child}},
+		{"Navigate", []key.Binding{k.Down, k.Up, k.PageDown, k.PageUp, k.Top, k.Bottom, k.Head, k.Parent, k.NthParent, k.Child}},
 		{"Search", []key.Binding{k.Search, k.NextHit, k.PrevHit}},
 		{"Commits", []key.Binding{k.Enter, k.Copy, k.Edit, k.Toggle}},
 		{"View", []key.Binding{k.Split, k.Tags, k.Remotes, k.Zen, k.Help, k.Back, k.Quit}},
@@ -252,6 +257,13 @@ func ApplyKeys(overrides map[string][]string) error {
 		planned["quit"] = append(slices.Clone(q), "ctrl+c")
 	}
 	owner := map[string]string{}
+	for _, name := range ActionNames() {
+		for _, k := range planned[name] {
+			if slices.Contains(keys.NthParent.Keys(), k) {
+				return fmt.Errorf("key %q is reserved for jumping to the nth parent (action %q)", k, name)
+			}
+		}
+	}
 	for _, name := range ActionNames() {
 		for _, k := range planned[name] {
 			if prev, dup := owner[k]; dup && prev != name {

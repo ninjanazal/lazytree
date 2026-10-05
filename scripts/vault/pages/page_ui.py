@@ -40,7 +40,7 @@ def build():
     lg = s.card(620, y + 120, 420, "Log mode", "the normal view: move, open,\ncopy, jump, toggle refs", "blue", "📜", min_h=130)
     sr = s.card(0, y + 120, 420, "Search mode", "typing into the / box; the log\njumps live to the first match", "purple", "🔎", min_h=130)
     zn = s.card(1280, y + 120, 420, "Zen mode", "animated tree; every key except\nz / esc / q is ignored", "teal", "🧘", min_h=130)
-    dp = s.card(300, y + 400, 480, "Diff focused / popup", "enter: scroll the diff with j/k,\np / c follow parent / child, esc back", "orange", "🔍", min_h=130)
+    dp = s.card(300, y + 400, 480, "Diff focused / popup", "enter: scroll the diff with j/k,\np / c follow parent / child,\n1-9 nth parent, esc back", "orange", "🔍", min_h=130)
     hp = s.card(900, y + 400, 480, "Help overlay", "? shows every key binding;\nall other keys are swallowed", "gray", "❔", min_h=130)
     s.arrow(lg, sr, "l", "r", label="/", ta=0.35, tb=0.35, color=PAL["purple"][0])
     s.arrow(sr, lg, "r", "l", label="enter (keep) · esc (cancel)", ta=0.7, tb=0.7, color=PAL["purple"][0])

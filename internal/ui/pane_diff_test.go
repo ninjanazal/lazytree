@@ -34,7 +34,7 @@ func TestDiffPaneInspectorHeader(t *testing.T) {
 	out := p.renderContent()
 
 	for _, want := range []string{
-		c.Hash, "ann@example.com", "committer", "Bob", "aaaaaaaa bbbbbbbb",
+		c.Hash, "ann@example.com", "committer", "Bob", "1:aaaaaaaa 2:bbbbbbbb",
 		"main", "fix: thing", "longer explanation", "1 files changed", "+1", "-1",
 	} {
 		if !strings.Contains(out, want) {

@@ -87,6 +87,7 @@ Press `?` inside lazytree for the key bindings.
 | `g` `G` | First / last commit |
 | `H` | Jump to HEAD |
 | `p` `c` | Parent / child commit (also inside the diff) |
+| `1`–`9` | Jump to the nth parent of a merge (numbered in the diff header) |
 | `enter` | Open the diff (focus it in split view) |
 | `esc` | Back, or clear the search |
 | `/` | Search (see below) |
