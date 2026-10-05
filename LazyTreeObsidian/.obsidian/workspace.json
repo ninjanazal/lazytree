@@ -4,20 +4,71 @@
     "type": "split",
     "children": [
       {
-        "id": "5d5795915e049164",
+        "id": "243aef10a1e90550",
         "type": "tabs",
         "children": [
           {
-            "id": "b6a1278feaa691f5",
+            "id": "c1140d205ddbedf9",
             "type": "leaf",
             "state": {
-              "type": "empty",
-              "state": {},
-              "icon": "lucide-file",
-              "title": "New tab"
+              "type": "excalidraw",
+              "state": {
+                "file": "Overview/06 Roadmap.md"
+              },
+              "icon": "excalidraw-icon",
+              "title": "06 Roadmap"
+            }
+          },
+          {
+            "id": "8c853e8ce72836b3",
+            "type": "leaf",
+            "state": {
+              "type": "excalidraw",
+              "state": {
+                "file": "Overview/14 Glossary.md"
+              },
+              "icon": "excalidraw-icon",
+              "title": "14 Glossary"
+            }
+          },
+          {
+            "id": "a9b6563b1551d329",
+            "type": "leaf",
+            "state": {
+              "type": "excalidraw",
+              "state": {
+                "file": "Overview/14 Glossary.md"
+              },
+              "icon": "excalidraw-icon",
+              "title": "14 Glossary"
+            }
+          },
+          {
+            "id": "4a2d61e4ac4d21e4",
+            "type": "leaf",
+            "state": {
+              "type": "excalidraw",
+              "state": {
+                "file": "Overview/13 Release & Tooling.md"
+              },
+              "icon": "excalidraw-icon",
+              "title": "13 Release & Tooling"
+            }
+          },
+          {
+            "id": "a457f963b41854ea",
+            "type": "leaf",
+            "state": {
+              "type": "excalidraw",
+              "state": {
+                "file": "BaseOverview.md"
+              },
+              "icon": "excalidraw-icon",
+              "title": "BaseOverview"
             }
           }
-        ]
+        ],
+        "currentTab": 4
       }
     ],
     "direction": "vertical"
@@ -182,10 +233,17 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "f008c62c1bec25ea",
+  "active": "a457f963b41854ea",
   "lastOpenFiles": [
+    "Overview/13 Release & Tooling.md",
     "Overview/14 Glossary.md",
+    "Overview/06 Roadmap.md",
+    "BaseOverview.md",
     "Overview/01 Idea & Vision.md",
+    "Overview/07 Data Model.md",
+    "Overview/10 Search & Navigation.md",
+    "Overview/11 Configuration.md",
+    "Overview/12 Testing & Quality.md",
     "assets/demo.gif",
     "assets/zen-dark.png",
     "assets/split-light.png",
@@ -193,17 +251,10 @@
     "assets/search-dark.png",
     "assets/popup-dark.png",
     "assets/help-dark.png",
-    "Overview/13 Release & Tooling.md",
-    "Overview/12 Testing & Quality.md",
-    "Overview/11 Configuration.md",
-    "Overview/10 Search & Navigation.md",
     "Overview/08 Graph Algorithm.md",
-    "Overview/07 Data Model.md",
     "Overview/09 UI Guide.md",
     "assets",
-    "Overview/06 Roadmap.md",
     "Overview/05 Missing & Risks.md",
-    "BaseOverview.md",
     "Overview/02 Architecture.md",
     "Overview/03 Runtime & Message Flow.md",
     "Overview/04 Design Choices.md",

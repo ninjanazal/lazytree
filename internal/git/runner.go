@@ -7,7 +7,12 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"time"
 )
+
+// waitDelay is how long Wait waits for the output pipes to close after
+// git has been killed or has exited.
+const waitDelay = 5 * time.Second
 
 type Runner struct {
 	RepoPath string
@@ -22,11 +27,22 @@ func (r *Runner) newCmd(ctx context.Context, args ...string) *exec.Cmd {
 	cmd := exec.CommandContext(ctx, "git", args...)
 	cmd.Dir = r.RepoPath
 	cmd.Env = append(os.Environ(), "LC_ALL=C")
+	// When ctx kills git, helpers it spawned (ssh, git-remote-https) can
+	// keep the output pipes open; without WaitDelay, Wait would block until
+	// they exit, possibly forever.
+	cmd.WaitDelay = waitDelay
 	return cmd
 }
 
 func (r *Runner) Run(ctx context.Context, args ...string) ([]byte, error) {
+	return r.runEnv(ctx, nil, args...)
+}
+
+// runEnv is Run with extra environment variables appended (they win over
+// the inherited ones).
+func (r *Runner) runEnv(ctx context.Context, env []string, args ...string) ([]byte, error) {
 	cmd := r.newCmd(ctx, args...)
+	cmd.Env = append(cmd.Env, env...)
 	var out, errOut bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errOut
