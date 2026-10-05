@@ -25,17 +25,17 @@ def build():
 
     # status strip
     y = 880
-    section(s, 0, y, "Where the project stands", "gray", 1700, "Six milestones; five are done, the last one only needs the v0.1.0 tag.")
+    section(s, 0, y, "Where the project stands", "gray", 1700, "Six milestones are done; M7 is the road to v1.0.0, the first public release.")
     ms = [("M1", "Robustness", "done"), ("M2", "Performance", "done"), ("M3", "Understand a commit", "done"),
-          ("M4", "Navigate & search", "done"), ("M5", "Actions & config", "done"), ("M6", "Ship it", "almost")]
+          ("M4", "Navigate & search", "done"), ("M5", "Actions & config", "done"), ("M6", "Ship it", "done"), ("M7", "v1.0.0 Stable", "next")]
     for i, (m, lab, st) in enumerate(ms):
         col = "green" if st == "done" else "yellow"
-        x = i * 284
-        b = s.rect(x, y + 90, 264, 110, col, strong=True, link=link("roadmap"))
+        x = i * 243
+        b = s.rect(x, y + 90, 225, 110, col, strong=True, link=link("roadmap"))
         s.text(x + 16, y + 102, f"{m}  {'✅' if st == 'done' else '⏳'}", size=26, color=PAL[col][0], font=F_TITLE)
-        s.text(x + 16, y + 146, lab + ("" if st == "done" else "\n(tag + upload left)"), size=16)
-        if i < 5:
-            s.line([(x + 264, y + 145), (x + 284, y + 145)], color=PAL["gray"][0], arrow=True)
+        s.text(x + 16, y + 146, lab + ("" if st == "done" else "\n(6 must-haves)"), size=16)
+        if i < 6:
+            s.line([(x + 225, y + 145), (x + 243, y + 145)], color=PAL["gray"][0], arrow=True)
 
     # page map
     y = 1130

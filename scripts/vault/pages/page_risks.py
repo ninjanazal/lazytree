@@ -6,7 +6,7 @@ def build():
     section(s, 0, 240, "Health dashboard", "red", 1700)
     tiles = [("Tests", "15 test files\nall green", "green"), ("Platforms", "Linux ✓  macOS ✓\nWindows ✗", "yellow"),
              ("Speed", "108k commits\n1.2 s full load", "green"), ("Git versions", "2.39 → 2.54\nin Docker", "green"),
-             ("Release", "ready, not\ntagged yet", "yellow"), ("Automation", "none that\npublishes", "blue")]
+             ("Release", "v1.0.0 planned\n(roadmap M7)", "yellow"), ("Automation", "none that\npublishes", "blue")]
     for i, (t, v, col) in enumerate(tiles):
         x = i * 284
         s.rect(x, 320, 264, 150, col, strong=True)
@@ -16,6 +16,7 @@ def build():
     fixed = ["Repo detection failed in worktrees, submodules and bare repos → ResolveRepo (git rev-parse)",
              "Errors lost git's stderr (“exit status 128”) → errors wrap stderr",
              "Any error replaced the whole UI → non-fatal footer banner",
+             "Background fetch could hang on a credential prompt → non-interactive env + 2 min timeout",
              "Whole graph re-rendered every frame → cached rows",
              "O(n²) paging with --skip → one streaming git log",
              "Cursor could leave the screen on branchy history → line-based scrolling",
@@ -27,10 +28,10 @@ def build():
     rows = [["Area", "Limit", "Impact", "Possible fix"],
             ["Diff view", "No horizontal scrolling; long lines are cut", "low", "viewport with x-offset"],
             ["Syntax colours", "Tokenised per line, so block comments may mis-colour", "low", "highlight whole hunks"],
-            ["Background fetch", "Network use; may hit credential prompts", "medium", "fetch_interval = \"off\""],
+            ["Background fetch", "Uses the network; auth failures are silent (non-interactive)", "low", "fetch_interval = \"off\""],
             ["Theme detection", "Some terminals don't report their background", "low", "theme = light | dark"],
-            ["Tiny terminals", "Below ~24×10 the layout can overflow", "low", "minimum size message"],
-            ["macOS", "Emulated (Docker symlink re-run), not run natively", "medium", "test on a Mac before releases"],
+            ["Tiny terminals", "Below ~24×10 the layout can overflow", "low", "M7: minimum size message"],
+            ["macOS", "Emulated (Docker symlink re-run), not run natively", "medium", "M7: native smoke test"],
             ["Search", "In-memory search only covers loaded commits", "low", "use g: / s: / p: for everything"]]
     s.table(0, 880, [220, 640, 140, 700], rows, "red", size=15)
     section(s, 0, 1270, "⛔ Out of scope on purpose", "red", 1700)

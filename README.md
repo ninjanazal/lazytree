@@ -184,7 +184,7 @@ make screenshots      # regenerate docs/img (needs Docker)
 make help             # every target
 ```
 
-Releases are prepared locally and never published automatically: `make release VERSION=v0.1.0` runs the checks, creates the tag, builds the archives and writes the release text; you push the tag and upload the files yourself. See `scripts/release.sh`.
+Releases are prepared locally and never published automatically: `make release VERSION=v1.0.0` runs the checks, creates the tag, builds the archives and writes the release text; you push the tag and upload the files yourself. See `scripts/release.sh`.
 
 ## Status
 
