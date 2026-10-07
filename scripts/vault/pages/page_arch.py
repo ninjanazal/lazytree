@@ -71,7 +71,7 @@ def build():
             ["internal/git/runner.go · error.go", "Run (buffered) / Start (streaming) wrappers around exec git; errors include git's stderr."],
             ["internal/git/repo.go", "ResolveRepo via git rev-parse: worktrees, submodules, bare repos, GIT_DIR."],
             ["internal/git/log.go", "FetchLog / ParseLog (NUL + SOH format) and StartLogStream / LogStream.Next(n) for paging."],
-            ["internal/git/refs.go", "BuildRefsByHash, AttachRefs, classifyRef, RefsFingerprint, CurrentBranch."],
+            ["internal/git/refs.go", "BuildRefsByHash, AttachRefs, classifyRef (incl. refs/stash), RefsFingerprint, CurrentBranch."],
             ["internal/git/diff.go · search.go · fetch.go", "git show --patch parser (line numbers, binary, renames); SearchHashes (--grep / -S / path); git fetch --all."],
             ["internal/model/*.go", "Commit, Ref, GraphNode/GraphLayout, DiffFile/DiffHunk/DiffLine."],
             ["internal/graph/layout.go · render.go · color.go", "Layouter (incremental lanes), RenderCommitLine + connectors, adaptive lane palette."],

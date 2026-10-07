@@ -12,7 +12,7 @@ def build():
         (60, 46, "Column header", "GRAPH · COMMIT · MESSAGE · AUTHOR · DATE;\nclipped to the pane width on narrow terminals"),
         (75, 330, "Graph lanes", "one colour per lane; ● is a commit, │ a lane passing\nthrough, ╰ ╮ the connector rows for merges and forks"),
         (215, 120, "Commit hash", "short hash, coloured like its lane so you can\ntrack a branch down the list"),
-        (330, 100, "Ref labels", "green = local branch · blue = remote · purple = tag\norange = HEAD → branch.  t / r hide tags / remotes"),
+        (330, 100, "Ref labels", "green = local branch · blue = remote · purple = tag\norange = HEAD → branch · yellow = stash.  t / r hide tags / remotes"),
         (40, 137, "Selected row", "tinted background; the row keeps its colours.\nj/k, wheel or click move it"),
         (800, 137, "Author · date", "relative date (\"1mo ago\"), fixed width so the\ncolumns never jump while the clock moves"),
         (1040, 63, "Inspector header", "short hash + hints, full hash, author <email>,\ncommitter if different, date, parents, refs, message"),

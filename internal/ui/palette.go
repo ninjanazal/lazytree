@@ -28,6 +28,7 @@ func paletteTargets() map[string]*lipgloss.AdaptiveColor {
 		"branch":    &colorRefLocal,
 		"remote":    &colorRefRemote,
 		"tag":       &colorRefTag,
+		"stash":     &colorRefStash,
 		"added":     &colorDiffAdded,
 		"removed":   &colorDiffRemoved,
 		"diff_file": &colorDiffHeader,

@@ -26,6 +26,7 @@ var (
 	colorRefLocal  = ac("114", "114")
 	colorRefRemote = ac("111", "111")
 	colorRefTag    = ac("183", "183")
+	colorRefStash  = ac("221", "221")
 
 	colorDiffAdded      = ac("28", "114")
 	colorDiffRemoved    = ac("160", "203")
@@ -45,6 +46,7 @@ var (
 	styleRefLocal       lipgloss.Style
 	styleRefRemote      lipgloss.Style
 	styleRefTag         lipgloss.Style
+	styleRefStash       lipgloss.Style
 	styleDiffAdded      lipgloss.Style
 	styleDiffRemoved    lipgloss.Style
 	styleDiffHeader     lipgloss.Style
@@ -108,6 +110,11 @@ func buildStyles() {
 	styleRefTag = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("0")).
 		Background(colorRefTag).
+		Padding(0, 1)
+
+	styleRefStash = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("0")).
+		Background(colorRefStash).
 		Padding(0, 1)
 
 	styleDiffAdded = lipgloss.NewStyle().

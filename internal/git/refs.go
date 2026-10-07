@@ -20,6 +20,8 @@ func classifyRef(refname string, isHead bool) model.Ref {
 	case strings.HasPrefix(refname, "refs/tags/"):
 		name := strings.TrimPrefix(refname, "refs/tags/")
 		return model.Ref{Name: name, Kind: model.RefTag, IsHead: false}
+	case refname == "refs/stash":
+		return model.Ref{Name: "stash", Kind: model.RefStash}
 	default:
 		return model.Ref{Name: refname, Kind: model.RefHead, IsHead: isHead}
 	}
@@ -38,7 +40,7 @@ func AttachRefs(commits []model.Commit, refsByHash map[string][]model.Ref) {
 func BuildRefsByHash(ctx context.Context, r *Runner) (map[string][]model.Ref, error) {
 	raw, err := r.Run(ctx, "for-each-ref",
 		"--format=%(objectname)\t%(refname)\t*%(objectname)",
-		"refs/heads", "refs/remotes", "refs/tags",
+		"refs/heads", "refs/remotes", "refs/tags", "refs/stash",
 	)
 	if err != nil {
 		return nil, err
@@ -51,7 +53,7 @@ func BuildRefsByHash(ctx context.Context, r *Runner) (map[string][]model.Ref, er
 	rawDeref, _ := r.Run(ctx, "for-each-ref",
 		"--format=%(objectname)\t%(refname)\t%(object)",
 		"--dereference",
-		"refs/heads", "refs/remotes", "refs/tags",
+		"refs/heads", "refs/remotes", "refs/tags", "refs/stash",
 	)
 
 	result := map[string][]model.Ref{}
@@ -88,6 +90,7 @@ func BuildRefsByHash(ctx context.Context, r *Runner) (map[string][]model.Ref, er
 
 	parseLines(raw)
 	parseLines(rawDeref)
+	addStashParents(ctx, r, result)
 	return result, nil
 }
 
@@ -118,4 +121,54 @@ func CurrentBranch(ctx context.Context, r *Runner) (string, error) {
 		return "", nil
 	}
 	return name, nil
+}
+
+// addStashParents marks the helper commits git creates for a stash. A stash
+// is a merge whose 2nd parent holds the staged changes ("index on ...") and,
+// for `git stash -u`, whose 3rd parent holds untracked files. FoldStash uses
+// the marks to hide them, so the stash draws as one commit off its base.
+func addStashParents(ctx context.Context, r *Runner, refs map[string][]model.Ref) {
+	for n, label := range map[string]string{"2": "stash index", "3": "stash untracked"} {
+		raw, err := r.Run(ctx, "rev-parse", "--verify", "--quiet", "refs/stash^"+n)
+		if err != nil {
+			continue
+		}
+		hash := strings.TrimSpace(string(raw))
+		if hash != "" {
+			refs[hash] = append(refs[hash], model.Ref{Name: label, Kind: model.RefStashHelper})
+		}
+	}
+}
+
+// FoldStash hides stash helper commits (see addStashParents) and trims the
+// stash commit to its first parent, so it renders as a single commit branching
+// off the commit it was made on rather than a confusing merge. Refs must
+// already be attached. It filters in place and returns the shortened slice.
+func FoldStash(commits []model.Commit) []model.Commit {
+	out := commits[:0]
+	for _, c := range commits {
+		helper, stash := false, false
+		for _, r := range c.Refs {
+			helper = helper || r.Kind == model.RefStashHelper
+			stash = stash || r.Kind == model.RefStash
+		}
+		if helper {
+			continue
+		}
+		if stash && len(c.Parents) > 1 {
+			c.Parents = c.Parents[:1]
+		}
+		out = append(out, c)
+	}
+	return out
+}
+
+// IsStash reports whether c carries the stash ref.
+func IsStash(c model.Commit) bool {
+	for _, r := range c.Refs {
+		if r.Kind == model.RefStash {
+			return true
+		}
+	}
+	return false
 }

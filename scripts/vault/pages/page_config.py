@@ -4,7 +4,7 @@ PALETTE = [("selected", "#d7d7ff", "#444444"), ("hash", "#d75f00", "#ffaf5f"), (
            ("date", "#626262", "#8a8a8a"), ("help", "#626262", "#8a8a8a"), ("border", "#bcbcbc", "#3a3a3a"),
            ("accent", "#87005f", "#af5fff"), ("title", "#87005f", "#af5fff"), ("error", "#d70000", "#ff5f5f"),
            ("head", "#d7875f", "#ffaf5f"), ("branch", "#87d787", "#87d787"), ("remote", "#87afff", "#87afff"),
-           ("tag", "#d7afff", "#d7afff"), ("added", "#008700", "#87d787"), ("removed", "#d70000", "#ff5f5f"),
+           ("tag", "#d7afff", "#d7afff"), ("stash", "#ffd75f", "#ffd75f"), ("added", "#008700", "#87d787"), ("removed", "#d70000", "#ff5f5f"),
            ("diff_file", "#005faf", "#87afff"), ("diff_hunk", "#626262", "#8a8a8a")]
 
 

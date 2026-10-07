@@ -19,7 +19,7 @@ def build():
            "terminals.", size=18)
     y = 640
     for i, (lab, col) in enumerate([("Go 1.26", "blue"), ("Bubble Tea", "purple"), ("~7k lines", "gray"),
-                                     ("15 test files", "yellow"), ("Linux + macOS", "green"), ("pre-1.0", "orange")]):
+                                     ("23 test files", "yellow"), ("Linux + macOS", "green"), ("pre-1.0", "orange")]):
         s.chip(1040 + (i % 3) * 210, y + (i // 3) * 52, lab, col)
     s.note(1040, 760, 640, "Click the screenshot to open the UI Guide, or any\ncard below to open that page (Ctrl/Cmd-click in Obsidian).", "info")
 
