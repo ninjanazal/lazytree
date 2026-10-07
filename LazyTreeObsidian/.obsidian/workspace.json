@@ -4,19 +4,17 @@
     "type": "split",
     "children": [
       {
-        "id": "4faf2d1fad08a75a",
+        "id": "0540bfaacaa86766",
         "type": "tabs",
         "children": [
           {
-            "id": "be8281cd5ad720c2",
+            "id": "031886366566d618",
             "type": "leaf",
             "state": {
-              "type": "excalidraw",
-              "state": {
-                "file": "BaseOverview.md"
-              },
-              "icon": "excalidraw-icon",
-              "title": "BaseOverview"
+              "type": "empty",
+              "state": {},
+              "icon": "lucide-file",
+              "title": "New tab"
             }
           }
         ]
@@ -185,12 +183,12 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "be8281cd5ad720c2",
+  "active": "031886366566d618",
   "lastOpenFiles": [
-    "Overview/06 Roadmap.md",
     "BaseOverview.md",
-    "Overview/13 Release & Tooling.md",
     "Overview/14 Glossary.md",
+    "Overview/06 Roadmap.md",
+    "Overview/13 Release & Tooling.md",
     "Overview/01 Idea & Vision.md",
     "Overview/07 Data Model.md",
     "Overview/10 Search & Navigation.md",

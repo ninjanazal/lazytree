@@ -20,7 +20,7 @@ It is inspired by `gitk --all` for history topology and `lazygit` for keyboard-d
 
 ## Features
 
-- **A real commit graph.** Colored lanes, merge and branch connectors, and ref labels for HEAD, branches, remotes and tags, with all refs shown by default (`--all`).
+- **A real commit graph.** Colored lanes, merge and branch connectors, and ref labels for HEAD, branches, remotes, tags and the latest stash (drawn as one commit off where you stashed), with all refs shown by default (`--all`).
 - **Commit inspector.** Full hash, author and committer, date, parents, refs, message body, and a per-file `+/-` summary.
 - **Syntax-highlighted diffs** with line numbers, rename and binary-file handling, shown next to the log (split view) or as a popup.
 - **Search that finds things.** Incremental, highlighted search over messages, bodies, authors, hashes and ref names, plus `git`-powered search by message, code or path across the *whole* history.
@@ -142,7 +142,7 @@ hash = "#ff8700"
 
 **Actions:** `up` `down` `page_up` `page_down` `top` `bottom` `enter` `back` `search` `next_match` `prev_match` `parent` `child` `head` `copy` `edit` `toggle_refs` `toggle_tags` `toggle_remotes` `split` `zen` `help` `quit`
 
-**Colors:** `selected` `hash` `author` `date` `help` `border` `accent` `title` `error` `head` `branch` `remote` `tag` `added` `removed` `diff_file` `diff_hunk`
+**Colors:** `selected` `hash` `author` `date` `help` `border` `accent` `title` `error` `head` `branch` `remote` `tag` `stash` `added` `removed` `diff_file` `diff_hunk`
 
 A key can only be bound to one action, `ctrl+c` always quits, and a color applies to both light and dark terminals.
 </details>

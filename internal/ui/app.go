@@ -267,6 +267,7 @@ func (m AppModel) startReloadCmd(gen int, knownRefs map[string][]model.Ref) tea.
 		}
 		if refsByHash != nil {
 			git.AttachRefs(commits, refsByHash)
+			commits = git.FoldStash(commits)
 		}
 
 		lt := graphpkg.NewLayouter()
@@ -285,10 +286,15 @@ func (m AppModel) startReloadCmd(gen int, knownRefs map[string][]model.Ref) tea.
 // nextPageCmd reads the next page from an already-open stream (see
 // startReloadCmd), for a generation already in progress.
 func (m AppModel) nextPageCmd(stream *git.LogStream, gen int) tea.Cmd {
+	refsByHash := m.refsByHash
 	return func() tea.Msg {
 		commits, done, err := stream.Next(pageSize)
 		if err != nil {
 			return MsgError{Gen: gen, Err: err}
+		}
+		if refsByHash != nil {
+			git.AttachRefs(commits, refsByHash)
+			commits = git.FoldStash(commits)
 		}
 		var openStream *git.LogStream
 		if !done {
@@ -316,7 +322,7 @@ func (m AppModel) loadDiffCmd(hash string, commit model.Commit) tea.Cmd {
 	width := m.diff.viewport.Width
 	return func() tea.Msg {
 		ctx := context.Background()
-		files, err := git.FetchDiff(ctx, m.runner, hash)
+		files, err := git.FetchDiff(ctx, m.runner, hash, git.IsStash(commit))
 		if err != nil {
 			return MsgDiffLoaded{Hash: hash, Err: err}
 		}

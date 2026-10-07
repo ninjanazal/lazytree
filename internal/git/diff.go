@@ -8,9 +8,15 @@ import (
 	"github.com/eurico-martins/lazytree/internal/model"
 )
 
-// FetchDiff returns the parsed diff for a commit.
-func FetchDiff(ctx context.Context, r *Runner, hash string) ([]model.DiffFile, error) {
-	raw, err := r.Run(ctx, "show", "--patch", "--format=", hash)
+// FetchDiff returns the parsed diff for a commit. firstParent diffs a merge
+// against its first parent only; used for stashes, whose default combined
+// diff is empty.
+func FetchDiff(ctx context.Context, r *Runner, hash string, firstParent bool) ([]model.DiffFile, error) {
+	args := []string{"show", "--patch", "--format="}
+	if firstParent {
+		args = append(args, "--diff-merges=first-parent")
+	}
+	raw, err := r.Run(ctx, append(args, hash)...)
 	if err != nil {
 		return nil, err
 	}

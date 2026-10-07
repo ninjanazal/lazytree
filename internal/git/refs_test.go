@@ -1,6 +1,10 @@
 package git
 
 import (
+	"context"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/eurico-martins/lazytree/internal/model"
@@ -36,6 +40,12 @@ func TestClassifyRef(t *testing.T) {
 			refname: "refs/tags/v1.0.0",
 			isHead:  true, // classifyRef must ignore this for tags
 			want:    model.Ref{Name: "v1.0.0", Kind: model.RefTag, IsHead: false},
+		},
+		{
+			name:    "stash",
+			refname: "refs/stash",
+			isHead:  true,
+			want:    model.Ref{Name: "stash", Kind: model.RefStash},
 		},
 		{
 			name:    "unrecognized refname falls back to RefHead",
@@ -82,5 +92,49 @@ func TestRefsFingerprint(t *testing.T) {
 
 	if RefsFingerprint(nil) != RefsFingerprint(map[string][]model.Ref{}) {
 		t.Errorf("expected nil and empty maps to produce the same fingerprint")
+	}
+}
+
+func TestBuildRefsByHash_StashLabels(t *testing.T) {
+	requireGit(t)
+	dir := t.TempDir()
+	initRepo(t, dir)
+	if err := os.WriteFile(filepath.Join(dir, "f.txt"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, dir, "add", "f.txt")
+	runGit(t, dir, "stash")
+
+	refs, err := BuildRefsByHash(context.Background(), &Runner{RepoPath: dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	stash := strings.TrimSpace(runGit(t, dir, "rev-parse", "refs/stash"))
+	index := strings.TrimSpace(runGit(t, dir, "rev-parse", "refs/stash^2"))
+	if got := refs[stash]; len(got) != 1 || got[0].Name != "stash" || got[0].Kind != model.RefStash {
+		t.Errorf("stash commit refs = %+v", got)
+	}
+	if got := refs[index]; len(got) != 1 || got[0].Kind != model.RefStashHelper {
+		t.Errorf("index commit refs = %+v", got)
+	}
+
+	files, err := FetchDiff(context.Background(), &Runner{RepoPath: dir}, stash, true)
+	if err != nil || len(files) != 1 {
+		t.Errorf("stash first-parent diff = %+v, %v; want f.txt", files, err)
+	}
+}
+
+func TestFoldStash(t *testing.T) {
+	commits := []model.Commit{
+		{Hash: "s", Parents: []string{"base", "idx"}, Refs: []model.Ref{{Name: "stash", Kind: model.RefStash}}},
+		{Hash: "idx", Parents: []string{"base"}, Refs: []model.Ref{{Name: "stash index", Kind: model.RefStashHelper}}},
+		{Hash: "base"},
+	}
+	got := FoldStash(commits)
+	if len(got) != 2 || got[0].Hash != "s" || got[1].Hash != "base" {
+		t.Fatalf("FoldStash = %+v", got)
+	}
+	if len(got[0].Parents) != 1 || got[0].Parents[0] != "base" {
+		t.Errorf("stash parents = %v, want [base]", got[0].Parents)
 	}
 }

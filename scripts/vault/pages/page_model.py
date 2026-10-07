@@ -22,7 +22,7 @@ def build():
     rf = fields(s, 640, 320, 420, "Ref", [("Name", "string  e.g. main"), ("Kind", "RefKind"), ("IsHead", "bool")], "green",
                 "attached to its commit by AttachRefs")
     rk = fields(s, 640, 580, 420, "RefKind (enum)", [("RefHead", "detached HEAD"), ("RefLocalBranch", "refs/heads/*"),
-                                                     ("RefRemoteBranch", "refs/remotes/*"), ("RefTag", "refs/tags/*")], "green")
+                                                     ("RefRemoteBranch", "refs/remotes/*"), ("RefTag", "refs/tags/*"), ("RefStash", "refs/stash"), ("RefStashHelper", "hidden stash parents")], "green")
     gn = fields(s, 1180, 320, 520, "GraphNode", [("CommitIndex", "int  row index"), ("Lane", "int  column"),
                                                  ("Parents", "[]int  parent lanes"), ("Color", "int  palette idx")], "teal",
                 "one per commit, same order as the commits")

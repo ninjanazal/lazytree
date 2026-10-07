@@ -4,7 +4,7 @@ from common import *
 def build():
     s = start("risks", "An honest list: what was fixed, what is still open, the known limits, and what is out of scope on purpose.")
     section(s, 0, 240, "Health dashboard", "red", 1700)
-    tiles = [("Tests", "15 test files\nall green", "green"), ("Platforms", "Linux ✓  macOS ✓\nWindows ✗", "yellow"),
+    tiles = [("Tests", "23 test files\nall green", "green"), ("Platforms", "Linux ✓  macOS ✓\nWindows ✗", "yellow"),
              ("Speed", "108k commits\n1.2 s full load", "green"), ("Git versions", "2.39 → 2.54\nin Docker", "green"),
              ("Release", "v1.0.0 planned\n(roadmap M7)", "yellow"), ("Automation", "none that\npublishes", "blue")]
     for i, (t, v, col) in enumerate(tiles):

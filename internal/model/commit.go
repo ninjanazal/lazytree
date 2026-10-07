@@ -9,6 +9,11 @@ const (
 	RefLocalBranch
 	RefRemoteBranch
 	RefTag
+	RefStash
+	// RefStashHelper marks the extra commits git creates for a stash (its
+	// staged-changes and untracked-files parents). They are folded out of the
+	// log by git.FoldStash, never displayed.
+	RefStashHelper
 )
 
 type Ref struct {

@@ -16,10 +16,10 @@ def build():
         s.text(x + 20, y + 48, d, size=14)
     section(s, 0, 800, "2 · What is tested where", "yellow", 1700)
     rows = [["Package", "Test files", "Covers"],
-            ["internal/git", "diff · log · refs · repo · error · search", "parsers, stderr wrapping, repo kinds, git-side search on real repos"],
+            ["internal/git", "diff · log · refs (incl. stash) · repo · error · fetch · search", "parsers, stderr wrapping, repo kinds, git-side search on real repos"],
             ["internal/graph", "layout · layout_incremental · render", "lane assignment, incremental == full layout, glyphs"],
             ["internal/config", "config_test", "defaults, every option, every error"],
-            ["internal/ui", "app · pane_log · pane_diff · pane_zen · banner\nhighlight · diffcache · reffilter · narrow · perf", "Update/View behaviour, scrolling, search, keys, split view, sizes 24×10 → 220×50"],
+            ["internal/ui", "app · pane_log · pane_diff · pane_zen · banner\nhighlight · diffcache · reffilter · narrow · toosmall · perf", "Update/View behaviour, scrolling, search, keys, split view, sizes 24×10 → 220×50"],
             ["cmd/lazytree", "main_test", "config → options mapping, usage text"]]
     s.table(0, 880, [240, 620, 840], rows, "yellow", size=15, mono_cols=(0,))
     section(s, 0, 1240, "3 · Commands", "yellow", 1700)

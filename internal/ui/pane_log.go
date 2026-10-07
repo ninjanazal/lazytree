@@ -455,6 +455,8 @@ func renderRefPills(refs []model.Ref) string {
 			s = styleRefRemote.Render(r.Name)
 		case model.RefTag:
 			s = styleRefTag.Render("tag: " + r.Name)
+		case model.RefStash:
+			s = styleRefStash.Render(r.Name)
 		}
 		parts = append(parts, s)
 	}
