@@ -19,7 +19,7 @@ def build():
            "terminals.", size=18)
     y = 640
     for i, (lab, col) in enumerate([("Go 1.26", "blue"), ("Bubble Tea", "purple"), ("~7k lines", "gray"),
-                                     ("23 test files", "yellow"), ("Linux + macOS", "green"), ("pre-1.0", "orange")]):
+                                     ("24 test files", "yellow"), ("Linux-first", "green"), ("pre-1.0", "orange")]):
         s.chip(1040 + (i % 3) * 210, y + (i // 3) * 52, lab, col)
     s.note(1040, 760, 640, "Click the screenshot to open the UI Guide, or any\ncard below to open that page (Ctrl/Cmd-click in Obsidian).", "info")
 
@@ -33,7 +33,7 @@ def build():
         x = i * 243
         b = s.rect(x, y + 90, 225, 110, col, strong=True, link=link("roadmap"))
         s.text(x + 16, y + 102, f"{m}  {'✅' if st == 'done' else '⏳'}", size=26, color=PAL[col][0], font=F_TITLE)
-        s.text(x + 16, y + 146, lab + ("" if st == "done" else "\n(6 must-haves)"), size=16)
+        s.text(x + 16, y + 146, lab + ("" if st == "done" else "\n(all must-haves done)"), size=16)
         if i < 6:
             s.line([(x + 225, y + 145), (x + 243, y + 145)], color=PAL["gray"][0], arrow=True)
 
@@ -50,9 +50,10 @@ def build():
         "search": "In-memory search vs git-powered\nsearch, jumping, parents and HEAD.",
         "design": "The important decisions, why they\nwere made and their trade-offs.",
         "config": "Every config option, key and colour\nname, and how errors are reported.",
+        "compat": "What 1.x freezes, how golden tests\nguard it, and how the changelog works.",
         "testing": "Test map, Docker matrix, macOS\nemulation, performance check.",
         "release": "Local-only release flow, release\nnotes, screenshots, Makefile.",
-        "roadmap": "Milestones M1–M6 with every task.",
+        "roadmap": "Milestones M1–M7 with every task,\nand the v1.0.0 must-haves.",
         "risks": "Known gaps, limits and what is\ndeliberately out of scope.",
         "glossary": "Git, TUI and project terms\nexplained in plain words.",
     }

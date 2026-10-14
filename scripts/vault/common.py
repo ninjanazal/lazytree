@@ -17,10 +17,11 @@ PAGES = {  # key -> (file name without .md, hub label, icon, color)
     "testing":  ("12 Testing & Quality", "Testing & Quality", "🧪", "yellow"),
     "release":  ("13 Release & Tooling", "Release & Tooling", "📦", "pink"),
     "glossary": ("14 Glossary", "Glossary", "📖", "gray"),
+    "compat":   ("15 Compatibility & Changelog", "Compatibility", "🔒", "teal"),
 }
 # the order a newcomer should read in
 READING = ["vision", "ui", "arch", "model", "runtime", "graph", "search", "design",
-           "config", "testing", "release", "roadmap", "risks", "glossary"]
+           "config", "compat", "testing", "release", "roadmap", "risks", "glossary"]
 
 W = 1700  # standard page width
 

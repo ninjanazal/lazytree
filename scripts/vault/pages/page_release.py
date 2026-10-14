@@ -37,13 +37,20 @@ def build():
         b = s.card(i * 342, 1390, 310, t.split("\n")[0], "\n".join(t.split("\n")[1:]), col, min_h=100, title_size=16)
         if prev: s.arrow(prev, b)
         prev = b
-    s.note(0, 1520, 1700, "Re-run make screenshots after UI changes, then make vault so the pages embed the new images.", "info", title="Keep images fresh")
-    section(s, 0, 1650, "5 · Makefile at a glance", "pink", 1700)
-    t = [("build", "./lazytree"), ("run / demo", "try it"), ("test / lint / check", "quality"), ("docker-test / docker-matrix", "clean Linux"),
-         ("perf / docker-perf", "100k timings"), ("cross", "compile 5 targets"), ("dist", "archives only"), ("release / release-dry", "prepare a release"),
-         ("screenshots", "README images"), ("vault", "rebuild these pages"), ("fmt / vet / clean", "housekeeping"), ("help", "list everything")]
-    for i, (k, d) in enumerate(t):
-        x, y = (i % 3) * 570, 1730 + (i // 3) * 60
-        b = s.chip(x, y, k, "pink", strong=True)
-        s.text(b.right + 12, y + 6, d, size=15)
+    s.note(0, 1520, 820, "Re-run make screenshots after UI changes, then make vault so the pages embed the new images.", "info", title="Keep images fresh")
+    s.note(880, 1520, 820, "Rename [Unreleased] in CHANGELOG.md to the version + date before make release.\nThe script does not edit it.", "warn", title="Changelog first")
+    section(s, 0, 1650, "5 · Makefile at a glance (make help shows these groups in colour)", "pink", 1700)
+    groups = [
+        ("Build & run", "blue", "🔨", "build            ./lazytree"),
+        ("Quality", "green", "✅", "test             unit tests\nlint             vet + fmt-check\nvet · fmt        housekeeping\nfmt-check        CI formatting"),
+        ("Run & clean", "orange", "▶", "run              build + open\ndemo             branchy test repo\nperf             100k-commit timings\nclean            remove binary"),
+        ("Verification", "yellow", "🧪", "check            lint+test+cross\ncross            5 targets\ndocker-test      clean Debian\ndocker-matrix    Debian x2 + Alpine\ndocker-perf      perf in Docker"),
+        ("Docs & vault", "purple", "📚", "screenshots      README images\nvault            these pages\nvault-preview    PNG previews"),
+        ("Release", "pink", "📦", "dist             archives only\nrelease          tag + archives + notes\nrelease-dry      preview, no tag"),
+        ("Help", "gray", "❓", "help             grouped, coloured\nNO_COLOR=1       plain output"),
+    ]
+    for i, (t, col, ic, body_) in enumerate(groups):
+        x, y = (i % 4) * 430, 1740 + (i // 4) * 210
+        s.card(x, y, 405, t, body_, col, ic, min_h=190 if i < 4 else 150, body_size=14, mono=True, title_size=19)
+    s.code(1290, 1950, 410, "##@ Quality\n\ntest: ## Run all tests\n\n##@ Release\n\ndist: ## Build archives", title="Makefile: add a group", size=14)
     return s

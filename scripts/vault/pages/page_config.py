@@ -42,7 +42,8 @@ def build():
     s.note(0, 1270, 1700, "lazytree: config ~/.config/lazytree/config.toml: unknown key \"fetch_intervall\" (valid: fetch_interval, show_all, …)\nlazytree: config [keys]: key \"q\" is bound to both \"quit\" and \"zen\"", "danger", title="Errors look like this (and lazytree exits before drawing)")
     section(s, 0, 1420, "4 · Key action names", "teal", 1700)
     acts = ["up", "down", "page_up", "page_down", "top", "bottom", "enter", "back", "search", "next_match", "prev_match", "parent",
-            "child", "head", "copy", "edit", "toggle_refs", "toggle_tags", "toggle_remotes", "split", "zen", "help", "quit"]
+            "child", "head", "copy", "edit", "toggle_refs", "toggle_tags", "toggle_remotes", "zen", "help", "quit"]
+    s.chip(1330, 1424, "🔒 frozen for 1.x", "teal", link=link("compat"), size=14)
     for i, a in enumerate(acts):
         s.chip((i % 8) * 212, 1500 + (i // 8) * 52, a, "purple", strong=False)
     section(s, 0, 1690, "5 · Colour names (default light / dark)", "teal", 1700, "Left half = light terminals, right half = dark. Your override applies to both.")
