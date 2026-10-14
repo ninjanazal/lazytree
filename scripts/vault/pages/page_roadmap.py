@@ -22,7 +22,7 @@ NICE = [
     ("Diff horizontal scroll", "long lines are cut today", "blue"),
     ("Whole-hunk highlighting", "block comments mis-colour", "teal"),
     ("Homebrew tap / AUR", "after the tag is public", "pink"),
-    ("Native macOS smoke test", "best-effort platform; needs a Mac", "orange"),
+    ("macOS binaries + smoke test", "source builds only for now; needs a Mac", "orange"),
 ]
 SHIP = ["make release-dry VERSION=v1.0.0", "make release VERSION=v1.0.0", "git push origin main v1.0.0", "GitHub release: upload dist/ + notes"]
 

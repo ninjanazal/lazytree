@@ -142,7 +142,7 @@ if not printed:
 PY
   echo "### Install"
   echo
-  echo "Download the archive for your system (Linux or macOS, amd64 or arm64), unpack it, and put \`lazytree\` on your \`PATH\`. Verify with \`checksums.txt\`. Requires \`git\`."
+  echo "Download the Linux archive for your architecture (amd64 or arm64), unpack it, and put \`lazytree\` on your \`PATH\`. Verify with \`checksums.txt\`. Requires \`git\`. On macOS or Windows, build from source (see the README)."
   echo
   echo '```bash'
   echo "go install github.com/eurico-martins/lazytree/cmd/lazytree@$VERSION"

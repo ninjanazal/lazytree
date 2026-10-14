@@ -44,7 +44,7 @@ perf: ## Measure load/scroll/search on a synthetic 100k-commit repo
 DOCKER_BASES := golang:1.26-bookworm golang:1.26-trixie golang:1.26-alpine
 GORELEASER := go run github.com/goreleaser/goreleaser/v2@latest
 
-cross: ## Compile-check every release target and Windows (no tests run)
+cross: ## Compile-check Linux (released) plus macOS and Windows (source builds); no tests run
 	@for t in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64; do \
 		echo "build $$t"; GOOS=$${t%/*} GOARCH=$${t#*/} CGO_ENABLED=0 go build -o /dev/null $(CMD) || exit 1; \
 	done

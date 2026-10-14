@@ -14,6 +14,7 @@ First public release. Highlights since the initial commits:
 ### Added
 - Stability contract: golden tests pin the `[keys]` action names, `[colors]` names,
   config file keys and CLI flags; README "Compatibility" section.
+- Release archives are Linux only (amd64, arm64); the README documents building from source on macOS and Windows.
 - `make help` groups targets by purpose, in color (`NO_COLOR=1` disables it).
 - Branch/merge graph with incremental lane layout, streaming `git log`, and
   a live diff pane (inspector header, line numbers, syntax highlighting).

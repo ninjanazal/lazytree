@@ -5,7 +5,7 @@ def build():
     s = start("release", "Shipping without automation: one command prepares everything locally, you decide what gets published.")
     section(s, 0, 240, "1 · make release VERSION=v1.0.0", "pink", 1700, "scripts/release.sh. Nothing is pushed or uploaded by it.")
     st = [("Guards", "clean tree? tag free?\non main?", "red", "🛡"), ("Checks", "make check\nmake docker-matrix", "yellow", "🧪"),
-          ("Tag", "git tag -a v1.0.0\n(local only)", "blue", "🏷"), ("Build", "goreleaser → dist/\n4 archives + checksums", "green", "📦"),
+          ("Tag", "git tag -a v1.0.0\n(local only)", "blue", "🏷"), ("Build", "goreleaser → dist/\n2 archives + checksums", "green", "📦"),
           ("Notes", "commits since last tag\n→ RELEASE_NOTES.md", "purple", "📝"), ("You", "push tag · upload ·\npaste notes", "gray", "🙋")]
     prev = None
     for i, (t, d, col, ic) in enumerate(st):
@@ -26,7 +26,7 @@ def build():
     s.table(0, 700, [420, 380, 500], rows, "pink", size=15, mono_cols=(0, 2))
     s.code(1340, 700, 360, "## lazytree v1.0.0\n\n### Features\n- **ui:** …\n### Fixes\n- …\n### Install\n…", title="RELEASE_NOTES.md")
     section(s, 0, 1040, "3 · What ends up in dist/", "pink", 1700)
-    for i, f in enumerate(["lazytree_1.0.0_linux_amd64.tar.gz", "lazytree_1.0.0_linux_arm64.tar.gz", "lazytree_1.0.0_darwin_amd64.tar.gz", "lazytree_1.0.0_darwin_arm64.tar.gz", "checksums.txt", "RELEASE_NOTES.md"]):
+    for i, f in enumerate(["lazytree_1.0.0_linux_amd64.tar.gz", "lazytree_1.0.0_linux_arm64.tar.gz", "checksums.txt", "RELEASE_NOTES.md"]):
         s.chip((i % 3) * 570, 1120 + (i // 3) * 56, "📄 " + f, "pink", strong=False)
     s.text(0, 1240, "Each archive: the lazytree binary (version injected with -ldflags, see lazytree --version) + LICENSE + README.", size=16)
     section(s, 0, 1310, "4 · Screenshots & demo GIF", "pink", 1700)

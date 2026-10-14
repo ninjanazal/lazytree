@@ -8,7 +8,8 @@
 <p align="center">
   <img alt="Go 1.26+" src="https://img.shields.io/badge/go-1.26%2B-00ADD8?logo=go&logoColor=white">
   <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue">
-  <img alt="Platforms: Linux and macOS" src="https://img.shields.io/badge/platforms-linux%20%7C%20macOS-lightgrey">
+  <img alt="Prebuilt binaries: Linux" src="https://img.shields.io/badge/binaries-linux-lightgrey">
+  <img alt="Read-only: never changes your repository" src="https://img.shields.io/badge/git-read--only-success">
 </p>
 
 <p align="center">
@@ -30,6 +31,7 @@ It is inspired by `gitk --all` for history topology and `lazygit` for keyboard-d
 - **Looks right everywhere.** Colors adapt to light and dark terminals, and rows are clipped cleanly on narrow ones.
 - **Configurable.** Remap keys, change colors, filter ref labels, pick the layout. Everything is optional.
 - **Zen mode.** An ambient, animated view of your repository's tree.
+- **Stable.** From 1.0.0 the config file, action and color names and the command line follow [Semantic Versioning](https://semver.org/); see [Compatibility](#compatibility).
 
 ## Screenshots
 
@@ -50,7 +52,7 @@ It is inspired by `gitk --all` for history topology and `lazygit` for keyboard-d
 
 ## Installation
 
-**Prebuilt binary** (Linux and macOS, amd64 and arm64): download the archive for your system from the [releases page](https://github.com/eurico-martins/lazytree/releases), unpack it and put `lazytree` on your `PATH`.
+**Prebuilt binary** (Linux, amd64 and arm64): download the archive for your architecture from the [releases page](https://github.com/eurico-martins/lazytree/releases), unpack it and put `lazytree` on your `PATH`. Verify it against `checksums.txt` from the same release.
 
 **With Go** (1.26.5 or newer):
 
@@ -66,7 +68,23 @@ cd lazytree
 make build        # produces ./lazytree
 ```
 
-`git` must be installed and on your `PATH`. Windows is not supported yet.
+`git` must be installed and on your `PATH` (tested with git 2.39 to 2.54).
+
+### macOS and Windows (build from source)
+
+Release binaries are published for Linux only. lazytree is plain Go with no cgo, so it compiles on other platforms, but it is only tested on Linux: expect rough edges, and please report them.
+
+```bash
+# macOS (Intel or Apple Silicon), with Go 1.26.5+ and git installed
+go install github.com/eurico-martins/lazytree/cmd/lazytree@latest
+
+# Windows (PowerShell), with Go and Git for Windows installed; use Windows Terminal
+go install github.com/eurico-martins/lazytree/cmd/lazytree@latest
+# or from a clone:
+go build -o lazytree.exe ./cmd/lazytree
+```
+
+The binary lands in `$(go env GOPATH)/bin` (add it to your `PATH`). To cross-compile from Linux, for example for an Apple Silicon Mac: `GOOS=darwin GOARCH=arm64 go build -o lazytree ./cmd/lazytree`.
 
 ## Usage
 
@@ -74,6 +92,7 @@ make build        # produces ./lazytree
 lazytree                  # the repository containing the current directory
 lazytree /path/to/repo    # any repository, worktree, submodule or bare repo
 lazytree --version
+lazytree --help
 ```
 
 Press `?` inside lazytree for the key bindings.
@@ -177,12 +196,12 @@ The graph layout has no dependency on the TUI framework and is tested on its own
 ```bash
 make build            # build ./lazytree
 make test             # run all tests
-make check            # lint, tests, and a compile check for Linux, macOS and Windows
+make check            # lint, tests, and a compile check for Linux (plus macOS and Windows)
 make docker-matrix    # tests in clean containers: Debian x2 and Alpine (git 2.39 to 2.54)
 make perf             # large-repository timings on a synthetic 100k-commit repo
 make demo             # run against a generated multi-branch repository
 make screenshots      # regenerate docs/img (needs Docker)
-make help             # every target
+make help             # every target, grouped
 ```
 
 Releases are prepared locally and never published automatically: `make release VERSION=v1.0.0` runs the checks, creates the tag, builds the archives and writes the release text; you push the tag and upload the files yourself. See `scripts/release.sh`.
@@ -195,11 +214,11 @@ From 1.0.0 on, these are stable and only change in a major release (2.0):
 - the action names accepted in `[keys]` and the color names accepted in `[colors]` (new ones may be added, none renamed or removed; golden tests enforce this);
 - the command line: `lazytree [path]`, `--version`, `--help`.
 
-Default key bindings, visual layout and the exact text of messages may still change in minor releases.
+Default key bindings, visual layout and the exact text of messages may still change in minor releases. What changed in each release is in the [changelog](CHANGELOG.md).
 
 ## Status
 
-Linux is the primary, fully tested platform. macOS archives are provided on a best-effort basis (cross-compiled, not tested natively); Windows is not supported. Planned: Homebrew and AUR packages. Ideas and bug reports are welcome.
+lazytree is at **1.0.0**. Linux is the supported platform: prebuilt binaries, and tests on Debian and Alpine with git 2.39 to 2.54. macOS and Windows are build-from-source only and untested. Planned: Homebrew and AUR packages. Ideas and bug reports are welcome; please open an issue.
 
 ## License
 
