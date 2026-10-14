@@ -18,9 +18,9 @@ def build():
     rows = [["Package", "Test files", "Covers"],
             ["internal/git", "diff · log · refs (incl. stash) · repo · error · fetch · search", "parsers, stderr wrapping, repo kinds, git-side search on real repos"],
             ["internal/graph", "layout · layout_incremental · render", "lane assignment, incremental == full layout, glyphs"],
-            ["internal/config", "config_test", "defaults, every option, every error"],
-            ["internal/ui", "app · pane_log · pane_diff · pane_zen · banner\nhighlight · diffcache · reffilter · narrow · toosmall · perf", "Update/View behaviour, scrolling, search, keys, split view, sizes 24×10 → 220×50"],
-            ["cmd/lazytree", "main_test", "config → options mapping, usage text"]]
+            ["internal/config", "config_test", "defaults, every option, every error, stable key surface"],
+            ["internal/ui", "app · pane_log · pane_diff · pane_zen · banner\nhighlight · diffcache · reffilter · narrow · toosmall · contract · perf", "Update/View behaviour, scrolling, search, keys, split view, sizes 24×10 → 220×50"],
+            ["cmd/lazytree", "main_test", "config → options mapping, usage text, CLI flags"]]
     s.table(0, 880, [240, 620, 840], rows, "yellow", size=15, mono_cols=(0,))
     section(s, 0, 1240, "3 · Commands", "yellow", 1700)
     cmds = [("make test", "all unit tests (seconds)"), ("make check", "lint + tests + compile for 5 targets (incl. Windows)"),
@@ -41,4 +41,5 @@ def build():
         s.arrow(b, r1, ta=0.4); s.arrow(r1, r2)
     s.note(860, 1960, 840, "macOS's temp dir is a symlink (/var → /private/var). Running the git tests\nfrom a symlinked TMPDIR reproduces the bug class that once broke on macOS.", "idea", title="🍎 macOS emulation")
     s.note(0, 1960, 820, "Rule of thumb: every fixed bug gets a test that failed before the fix\n(e.g. TestLogPane_CursorStaysVisible, TestNarrowTerminals).", "tip", title="Regression first")
+    s.note(0, 2090, 1700, "contract_test.go and friends pin the action names, colour names, config keys and CLI flags promised for 1.x.\nSee the Compatibility page for the rules.", "info", title="🔒 Contract tests")
     return s

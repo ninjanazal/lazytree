@@ -18,6 +18,7 @@ const usage = `lazytree - a terminal UI for exploring Git history
 Usage:
   lazytree [path]      open the repository containing path (default: .)
   lazytree --version
+  lazytree --help
 
 Press ? inside lazytree for key bindings. Optional config:
 ~/.config/lazytree/config.toml (see the README).

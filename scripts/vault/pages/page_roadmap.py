@@ -5,7 +5,7 @@ MS = [
     ("M2", "Performance", "Large repos", "orange", True, ["cached graph lines + column widths", "incremental Layouter", "refs once per load; reload only if changed", "streaming git log instead of --skip", "measured on 108k commits (make perf)"]),
     ("M3", "Understand a commit", "Inspect", "yellow", True, ["inspector header: hash, people, parents, refs, body", "file summary with +/- counts", "line numbers, binary files, renames", "syntax highlighting (chroma)", "32-entry LRU diff cache", "p / c follow parent / child", "1-9 jump to the nth parent of a merge"]),
     ("M4", "Navigate & search", "Find things", "green", True, ["? help overlay from the key map", "highlights + n / N; bodies & refs searched", "g: s: p: git-side search", "H jump to HEAD", "mouse wheel + click"]),
-    ("M5", "Actions & config", "Light touch", "blue", True, ["y copy hash · o open in $EDITOR", "config file: fetch, theme, layout", "[keys] remap · [colors] palette", "t / r ref filters + hide_refs", "split view"]),
+    ("M5", "Actions & config", "Light touch", "blue", True, ["y copy hash · o open in $EDITOR", "config file: fetch, theme, layout", "[keys] remap · [colors] palette", "t / r ref filters + hide_refs", "split view", "stash shown as a pill"]),
     ("M6", "Ship it", "Release tooling", "purple", True, ["local checks: make check + docker-matrix", "goreleaser archives (make dist)", "make release: tag + files + notes", "README with screenshots + GIF"]),
 ]
 
@@ -15,14 +15,14 @@ MUST = [
     ("Safe background fetch", "Fetch runs with GIT_TERMINAL_PROMPT=0 and ssh BatchMode, so a credential prompt can never hang or corrupt the UI.", True),
     ("Jumpable parents", "Merge parents are numbered in the inspector header; 1-9 jump to that parent, in the log and inside the diff. Closes M3.", True),
     ("Too-small terminal message", "Below the minimum size, show “terminal too small” instead of a broken layout.", True),
-    ("Stability contract", "Freeze the config keys, [keys] action names, [colors] names and CLI. Golden tests for ActionNames() and PaletteNames(), plus a README “Compatibility” section.", False),
-    ("CHANGELOG.md", "A history people can read, seeded from the release notes. Release docs and examples use v1.0.0.", False),
-    ("Native macOS smoke test", "Run the real binary once on a Mac: clipboard, $EDITOR, theme detection.", False),
+    ("Stability contract", "Config keys, [keys] action names, [colors] names and CLI are frozen: golden tests for ActionNames(), PaletteNames(), the config file and --help, plus a README “Compatibility” section.", True),
+    ("CHANGELOG.md", "Keep a Changelog format with [Unreleased] and a 1.0.0 draft. Before tagging, rename [Unreleased] to the version and date.", True),
 ]
 NICE = [
     ("Diff horizontal scroll", "long lines are cut today", "blue"),
     ("Whole-hunk highlighting", "block comments mis-colour", "teal"),
     ("Homebrew tap / AUR", "after the tag is public", "pink"),
+    ("Native macOS smoke test", "best-effort platform; needs a Mac", "orange"),
 ]
 SHIP = ["make release-dry VERSION=v1.0.0", "make release VERSION=v1.0.0", "git push origin main v1.0.0", "GitHub release: upload dist/ + notes"]
 
@@ -53,11 +53,11 @@ def build():
         while len(ln) > 52:
             cut = ln.rfind(" ", 0, 52); wrapped.append(ln[:cut]); ln = ln[cut + 1:]
         wrapped.append(ln)
-        s.card(x, y, 555, f"{'☑' if d else '☐'} {t}", "\n".join(wrapped), "green" if d else "yellow", min_h=170, body_size=15, title_size=18)
+        s.card(x, y, 555, f"{'☑' if d else '☐'} {t}", "\n".join(wrapped), "green" if d else "yellow", min_h=170, body_size=15, title_size=18, link=link("compat") if t == "Stability contract" else None)
 
     section(s, 0, 1340, "Nice to have (can slip to 1.1)", "green", 1700)
     for i, (t, d, col) in enumerate(NICE):
-        s.card(i * 575, 1410, 555, t, d, col, "✨", min_h=100)
+        s.card(i * 430, 1410, 405, t, d, col, "✨", min_h=100)
 
     section(s, 0, 1560, "Ship day", "green", 1700, "Nothing is pushed automatically; steps 3–4 are by hand.")
     for i, st in enumerate(SHIP):

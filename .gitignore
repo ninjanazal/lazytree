@@ -35,7 +35,10 @@ go.work.sum
 CLAUDE.md
 
 # Build
-lazytree
+/lazytree
 dist/
 vault-preview/
 __pycache__/
+
+# Obsidian per-user UI state
+LazyTreeObsidian/.obsidian/workspace.json

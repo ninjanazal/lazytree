@@ -140,7 +140,7 @@ hash = "#ff8700"
 <details>
 <summary>Key action names and color names</summary>
 
-**Actions:** `up` `down` `page_up` `page_down` `top` `bottom` `enter` `back` `search` `next_match` `prev_match` `parent` `child` `head` `copy` `edit` `toggle_refs` `toggle_tags` `toggle_remotes` `split` `zen` `help` `quit`
+**Actions:** `up` `down` `page_up` `page_down` `top` `bottom` `enter` `back` `search` `next_match` `prev_match` `parent` `child` `head` `copy` `edit` `toggle_refs` `toggle_tags` `toggle_remotes` `zen` `help` `quit`
 
 **Colors:** `selected` `hash` `author` `date` `help` `border` `accent` `title` `error` `head` `branch` `remote` `tag` `stash` `added` `removed` `diff_file` `diff_hunk`
 
@@ -187,9 +187,19 @@ make help             # every target
 
 Releases are prepared locally and never published automatically: `make release VERSION=v1.0.0` runs the checks, creates the tag, builds the archives and writes the release text; you push the tag and upload the files yourself. See `scripts/release.sh`.
 
+## Compatibility
+
+From 1.0.0 on, these are stable and only change in a major release (2.0):
+
+- the config file name, location and every key in the [Configuration](#configuration) section;
+- the action names accepted in `[keys]` and the color names accepted in `[colors]` (new ones may be added, none renamed or removed; golden tests enforce this);
+- the command line: `lazytree [path]`, `--version`, `--help`.
+
+Default key bindings, visual layout and the exact text of messages may still change in minor releases.
+
 ## Status
 
-lazytree is early software (pre-1.0). Linux and macOS are supported; Windows is not tested. Planned: Homebrew and AUR packages. Ideas and bug reports are welcome.
+Linux is the primary, fully tested platform. macOS archives are provided on a best-effort basis (cross-compiled, not tested natively); Windows is not supported. Planned: Homebrew and AUR packages. Ideas and bug reports are welcome.
 
 ## License
 

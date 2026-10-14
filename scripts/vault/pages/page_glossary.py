@@ -27,6 +27,9 @@ T = [
     ("LRU cache", "Keeps the most recently used items (32 diffs), drops the oldest.", "teal"),
     ("OSC 52", "A terminal escape code that copies text to the clipboard, even over SSH.", "gray"),
     ("vhs", "A tool that records terminal sessions to GIF/PNG from a script (tape).", "pink"),
+    ("SemVer", "Version numbers MAJOR.MINOR.PATCH: breaking changes only bump MAJOR.", "teal"),
+    ("Golden test", "A test that compares output with a saved list; any drift fails it.", "yellow"),
+    ("Changelog", "A hand-written history of user-visible changes, newest first.", "pink"),
     ("goreleaser", "Builds release archives for every platform from one config.", "pink"),
 ]
 

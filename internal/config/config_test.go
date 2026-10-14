@@ -93,3 +93,26 @@ added = "34"
 		t.Error("an invalid layout must be rejected")
 	}
 }
+
+// TestConfigKeysAreStable pins the 1.x config file surface: every documented
+// top-level key and table must keep loading without "unknown key" errors.
+func TestConfigKeysAreStable(t *testing.T) {
+	body := `fetch_interval = "60s"
+show_all = true
+theme = "auto"
+layout = "auto"
+hide_tags = false
+hide_remotes = false
+hide_refs = ["origin/dependabot/*"]
+lane_colors = ["#5f87ff", "208"]
+
+[keys]
+zen = ["x"]
+
+[colors]
+hash = "#ff8700"
+`
+	if _, err := LoadFile(write(t, body)); err != nil {
+		t.Fatalf("documented config no longer loads: %v", err)
+	}
+}
